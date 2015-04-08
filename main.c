@@ -14,24 +14,26 @@
 #include "delay.h"
 #include "sw_cmd_uart.h"
 #include "card.h"
+#include "usbd.h"
 
 uint32_t TimeVal;
+
 
 int main (void) {
     SystemInit();
     SystemCoreClockUpdate();
     Delay_Init();
+    Led_Init();
+    UartSW_Init(57600);
+    UartSW_Printf("SC AHB:%uMHz\r", SystemCoreClock/1000000);
 
-    Card_Init();
-
-    UartSW_Init(4800);
-    UartSW_Printf("smart_card %uMHz\r", SystemCoreClock/1000000);
+//    Card_Init();
+    Usb_Init();
 
     uint32_t Timer;
     while (1) {
         if(Delay_Elapsed(&Timer, 999)) {
-            UartSW_PrintChar('a');
+            LedG_Toggle();
         }
     }
 }
-

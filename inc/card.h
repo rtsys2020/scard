@@ -11,6 +11,7 @@
 
 #include "LPC11Uxx.h"
 #include "rj_lib_LPC11Uxx.h"
+#include "sw_cmd_uart.h"
 
 #define CARD_PWR_PORT       1
 #define CARD_PWR_PIN        22

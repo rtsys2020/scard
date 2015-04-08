@@ -14,14 +14,14 @@
 
 
 
-void led1_on();
-void led2_on();
-void led1_off();
-void led2_off();
-void led1_toggle();
-void led2_toggle();
+void LedB_On();
+void LedG_On();
+void LedB_Off();
+void LedG_Off();
+void LedB_Toggle();
+void LedG_Toggle();
 
-void led_init();
+void Led_Init();
 
 
 

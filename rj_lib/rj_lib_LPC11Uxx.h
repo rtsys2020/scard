@@ -9,7 +9,7 @@
 #define RJ_LIB_RJ_LIB_LPC11UXX_H_
 
 #include "LPC11Uxx.h"
-
+#include <stddef.h>
 
 #define bool  _Bool
 #define true    1

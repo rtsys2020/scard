@@ -1,9 +1,9 @@
 /****************************************************************************
  *   $Id:: power_api.h 6249 2011-01-25 19:23:47Z usb01267                   $
- *   Project: NXP LPC11Uxx software example  
+ *   Project: NXP LPC11Uxx software example
  *
  *   Description:
- *     Power API Header File for NXP LPC11Uxx Device Series 
+ *     Power API Header File for NXP LPC11Uxx Device Series
  *
  ****************************************************************************
  * Software that is described herein is for illustrative purposes only
@@ -22,9 +22,15 @@
 
 #ifdef __cplusplus
  extern "C" {
-#endif 
+#endif
 
 #define PWRROMD_PRESENT
+#define USBROMD_PRESENT
+
+#ifdef USBROMD_PRESENT
+#include "mw_usbd_rom_api.h"
+#endif
+
 
 typedef	struct _PWRD {
   void (*set_pll)(unsigned int cmd[], unsigned int resp[]);
@@ -33,7 +39,7 @@ typedef	struct _PWRD {
 
 typedef	struct _ROM {
 #ifdef USBROMD_PRESENT
-   const USB * pUSBD;
+   const USBD_API_T * pUSBD;
 #else
    const unsigned p_usbd;
 #endif /* USBROMD_PRESENT */
@@ -47,11 +53,11 @@ typedef	struct _ROM {
    const unsigned p_dev1;
    const unsigned p_dev2;
    const unsigned p_dev3;
-   const unsigned p_dev4; 
+   const unsigned p_dev4;
 }  ROM;
 
 //PLL setup related definitions
-#define	CPU_FREQ_EQU  		0       //main PLL freq must be equal to the specified 
+#define	CPU_FREQ_EQU  		0       //main PLL freq must be equal to the specified
 #define	CPU_FREQ_LTE		1       //main PLL freq must be less than or equal the specified
 #define	CPU_FREQ_GTE		2       //main PLL freq must be greater than or equal the specified
 #define	CPU_FREQ_APPROX		3       //main PLL freq must be as close as possible the specified

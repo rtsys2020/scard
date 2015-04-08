@@ -38,6 +38,7 @@ void IO_Init() {
     CARD_UART->IER = CARD_UART_IR_RDA; // Enable Rx Irq
 
     NVIC_EnableIRQ(UART_IRQn);
+    UartSW_Printf("Card Init\r");
 }
 
 void Card_Init() {
@@ -48,6 +49,7 @@ void Card_Init() {
 }
 
 void Card_IrqRx() {
+    UartSW_Printf("i\r");
     uint8_t IIRValue = CARD_UART->IIR;
     IIRValue >>= 1;
     if (IIRValue == CARD_UART_RDA)
