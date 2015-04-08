@@ -7,7 +7,6 @@
 
 
 #include "pwm_timer.h"
-#include "cmd_uart.h"
 
 
 void Pwm_Init() {
@@ -25,7 +24,6 @@ void Pwm_Init() {
     LPC_IOCON->PIO0_22 = (2 | (1 << 3)); // Port 0 pin 22
     LPC_CT16B1->TCR = 0;     // Take timer out of reset
     LPC_CT16B1->TCR = 1; // Enable
-    Uart_Printf("Pwm Init\r");
 }
 
 void Pwm_Set(uint8_t Percent) {
