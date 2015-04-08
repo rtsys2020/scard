@@ -15,4 +15,12 @@
 #define true    1
 #define false   0
 
+static inline void PinSet(uint8_t portNum, uint32_t pinNum) {
+    LPC_GPIO->SET[portNum] |= (1 << portNum);
+}
+
+static inline void PinClear(uint8_t portNum, uint8_t pinNum) {
+    LPC_GPIO->CLR[portNum] |= (1 << portNum);
+}
+
 #endif /* RJ_LIB_RJ_LIB_LPC11UXX_H_ */

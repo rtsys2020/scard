@@ -26,13 +26,6 @@ static uint32_t BitLength;
 uint8_t OutBuf[SW_OUT_BIF_SZ];
 uint8_t *pOut = OutBuf;
 
-static inline void PinSet(uint32_t portNum, uint32_t bitPosi, uint32_t bitVal ) {
-    if(bitVal) {
-        LPC_GPIO->SET[portNum] |= (bitVal<<bitPosi);
-    }
-    else LPC_GPIO->CLR[portNum] |= (bitVal<<bitPosi);
-}
-
 static void UartSW_SetTx(void) {
     uint8_t bit, i;
     uint32_t ext_data, delta_edges, mask, reference;
