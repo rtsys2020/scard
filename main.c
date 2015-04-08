@@ -27,8 +27,8 @@ int main (void) {
     UartSW_Init(57600);
     UartSW_Printf("SC AHB:%uMHz\r", SystemCoreClock/1000000);
 
-//    Card_Init();
-    Usb_Init();
+    Card_Init();
+//    Usb_Init();
 
     uint32_t Timer;
     while (1) {
