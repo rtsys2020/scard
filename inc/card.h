@@ -23,7 +23,7 @@
 #define CARD_UART           LPC_USART
 #define CARD_UART_IO_CON    LPC_IOCON->PIO0_19
 
-#define IER_RDA     (1)
+#define IER_RBR     (1)
 #define IER_RLS     (1 << 3)
 
 #define IIR_PEND    0x01
@@ -50,9 +50,9 @@
 #define CLK_ON()            CARD_CLK_TMR->TCR = 1;
 #define CLK_OFF()           CARD_CLK_TMR->TCR = 0;
 
-//#define CARD_CLK_PORT       0
-//#define CARD_CLK_PIN        17
-//#define CARD_CLK_IO_CON     LPC_IOCON->PIO0_17
+#define CARD_UART_CLK_PORT       0
+#define CARD_UART_CLK_PIN        17
+#define CARD_UART_CLK_IO_CON     LPC_IOCON->PIO0_17
 
 #define CARD_RST_PORT       1
 #define CARD_RST_PIN        24
@@ -63,7 +63,6 @@ typedef enum {
     CRD_NoCard, CRD_Error, CRD_Off, CRD_Active
 } CardState_t;
 
-extern uint8_t ReadByte(uint8_t *AByte);
 void Card_Init();
 
 

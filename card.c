@@ -12,8 +12,6 @@ uint32_t Cnt;
 bool Busy;
 CardState_t State;
 
-inline uint8_t ReadByte(uint8_t *AByte);
-
 void Activation() {
     RST_LO();
     PWR_ON();
@@ -70,17 +68,22 @@ void IO_Init() {
     NVIC_DisableIRQ(UART_IRQn);
     CARD_UART_IO_CON &= ~0x07;  // Clean
     CARD_UART_IO_CON |= 0x01;   // Port 0 Pin 19 is UART IO
-
+    CARD_UART_CLK_IO_CON &= ~0x07; // Clean
+    CARD_UART_CLK_IO_CON |= 0x03; // Port 0 Pin 17 UART SCLK
+    CARD_UART->HDEN = 0; // Disable HDEN
+    CARD_UART->SYNCCTRL = 0; // Disable SyncCTRL
     LPC_SYSCON->UARTCLKDIV = 1;             // divided
-    CARD_UART->OSR = (uint32_t)(371 << 14); // Oversampling by 372
+    CARD_UART->OSR = (uint32_t)(371 << 4); // Oversampling by 372
     CARD_UART->DLL = 0x01; // }
     CARD_UART->DLM = 0x00; // } pass the USART clock through without division
     CARD_UART->LCR = 0x03; // 8 bit
+//    LPC_USART->FDR = (DivAddVal & 0x0F) | ((MulVal & 0x0F) << 4);
+    CARD_UART->FCR = 0x07;
     CARD_UART->LCR |= (1 << 3); // Parity Enable
-    CARD_UART->LCR |= (0x01 << 5); // Even Parity
-    CARD_UART->SCICTRL = 0x01; // Enable SC mode
+    CARD_UART->LCR |= (0x01 << 4); // Even Parity
+    CARD_UART->SCICTRL |= 0x01;
     LPC_SYSCON->SYSAHBCLKCTRL |= (1<<12);   // Enable Uart Clock
-    CARD_UART->IER = IER_RDA | IER_RLS; // Enable Rx Irq
+    CARD_UART->IER = IER_RBR | IER_RLS; // Enable Rx Irq
     NVIC_EnableIRQ(UART_IRQn);
     UartSW_Printf("Card Init\r");
 }
@@ -94,28 +97,15 @@ void Card_Init() {
     // ColdReset
     ColdReset();
     // Get ATR
-    uint8_t b;
-    if(ReadByte(&b)) {
-        UartSW_Printf("TS fail\r");
-        return;
-    }
+    UartSW_Printf("<--(%u) %A\r", Cnt, CardBuf, Cnt, ' ');
 }
 
 
 // ========================== Low-level ========================================
-inline uint8_t ReadByte(uint8_t *AByte) {
-   for(uint16_t i=0; i<9999; i++) {
-   }
-    // Timeout, get out
-    return 1;
-}
-
-void Card_IrqRx() {
-    UartSW_Printf("i\r");
+void UART_IRQHandler(void) {
     uint8_t IIRValue = CARD_UART->IIR;
     IIRValue >>= 1;
     IIRValue &= 0x07;
-
     if(IIRValue == IIR_RLS) {
         uint32_t LSRValue = CARD_UART->LSR;
         if(LSRValue & LSR_RDR) {
@@ -126,11 +116,7 @@ void Card_IrqRx() {
             return;
         }
     }
-    if(IIRValue == IIR_RDA) {
+    else if(IIRValue == IIR_RDA) {
         CardBuf[Cnt++] = CARD_UART->RBR;
     }
-}
-
-void Uart_IRQHandler(void) {
-    Card_IrqRx();
 }
