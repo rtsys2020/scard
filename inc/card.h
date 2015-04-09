@@ -13,7 +13,7 @@
 #include "rj_lib_LPC11Uxx.h"
 #include "sw_cmd_uart.h"
 
-#define CARD_PWR_PORT       1
+#define CARD_PWR_PORT       1 // 38
 #define CARD_PWR_PIN        22
 #define PWR_ON()            PinClear(CARD_PWR_PORT, CARD_PWR_PIN)
 #define PWR_OFF()           PinSet(CARD_PWR_PORT, CARD_PWR_PIN)
@@ -44,6 +44,11 @@
 #define RST_HI()            PinSet(CARD_RST_PORT, CARD_RST_PIN)
 #define RST_LO()            PinClear(CARD_RST_PORT, CARD_RST_PIN)
 
+typedef enum {
+    CRD_NoCard, CRD_Error, CRD_Off, CRD_Active
+} CardState_t;
+
+extern uint8_t ReadByte(uint8_t *AByte);
 void Card_Init();
 
 

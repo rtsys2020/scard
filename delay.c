@@ -30,8 +30,13 @@ bool Delay_Elapsed(uint32_t *AVar, const uint32_t ADelay) {
 
 static void Loop(volatile uint32_t ACounter) { while(ACounter--); }
 
-void Delay_ms(uint32_t Ams) {
+void _delay_ms(uint32_t Ams) {
     uint32_t __ticks = (SystemCoreClock / 10000) * Ams;
+    Loop(__ticks);
+}
+
+void _delay_us(uint32_t Aus) {
+    uint32_t __ticks = (SystemCoreClock / 10000000) * Aus;
     Loop(__ticks);
 }
 

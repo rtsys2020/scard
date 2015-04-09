@@ -28,14 +28,11 @@ int main (void) {
     UartSW_Printf("SC AHB:%uMHz\r", SystemCoreClock/1000000);
 
     Card_Init();
-
 //    Usb_Init();
-//    PWR_ON();
-//    RST_HI();
     uint32_t Timer;
     while (1) {
         if(Delay_Elapsed(&Timer, 999)) {
-            LedG_Toggle();
+            LedB_Toggle();
         }
     }
 }

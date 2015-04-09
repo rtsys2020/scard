@@ -13,7 +13,8 @@
 #include "rj_lib_LPC11Uxx.h"
 
 void Delay_Init();
-void Delay_ms (uint32_t Ams);
+void _delay_ms (uint32_t Ams);
+void _delay_us (uint32_t Aus);
 // Timer-driven delays
 bool Delay_Elapsed(uint32_t *AVar, const uint32_t ADelay);
 
