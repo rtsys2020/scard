@@ -80,7 +80,7 @@ void IO_Init() {
     CARD_UART->LCR |= (0x01 << 5); // Even Parity
     CARD_UART->SCICTRL = 0x01; // Enable SC mode
     LPC_SYSCON->SYSAHBCLKCTRL |= (1<<12);   // Enable Uart Clock
-    CARD_UART->IER = CARD_UART_IR_RDA | ; // Enable Rx Irq
+    CARD_UART->IER = IER_RDA | IER_RLS; // Enable Rx Irq
     NVIC_EnableIRQ(UART_IRQn);
     UartSW_Printf("Card Init\r");
 }
@@ -114,8 +114,21 @@ void Card_IrqRx() {
     UartSW_Printf("i\r");
     uint8_t IIRValue = CARD_UART->IIR;
     IIRValue >>= 1;
-    if (IIRValue == CARD_UART_RDA)
-        CardBuf[Cnt++] = LPC_USART->RBR;
+    IIRValue &= 0x07;
+
+    if(IIRValue == IIR_RLS) {
+        uint32_t LSRValue = CARD_UART->LSR;
+        if(LSRValue & LSR_RDR) {
+            CardBuf[Cnt++] = CARD_UART->RBR;
+        }
+        else {
+            uint8_t dummy = CARD_UART->RBR;
+            return;
+        }
+    }
+    if(IIRValue == IIR_RDA) {
+        CardBuf[Cnt++] = CARD_UART->RBR;
+    }
 }
 
 void Uart_IRQHandler(void) {
