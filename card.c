@@ -7,6 +7,9 @@
 #include "card.h"
 #include "delay.h"
 
+
+#define DEFAULT_BAUDRATE    10753
+
 uint8_t CardBuf[256];
 uint32_t Cnt;
 bool Busy;
@@ -54,7 +57,7 @@ void ClockInit() {
     // PR 3, MR3 3, MR1 2  = 3MHz
     LPC_SYSCON->SYSAHBCLKCTRL |= (1 << 8); // Enable the CT16B1 timer peripherals
     CARD_CLK_TMR->TCR = 2;
-    CARD_CLK_TMR->PR = 3; // PreScaler value, at 48000000Hz, a PR value of 3 gives us a 12000000Hz clock
+    CARD_CLK_TMR->PR = 2; // PreScaler value, at 48000000Hz, a PR value of 3 gives us a 12000000Hz clock
     CARD_CLK_TMR->PWMC = 0x0002;     // Enable PWM mode for Match 1.
     CARD_CLK_TMR->MCR = (1 << 10); // Reset on MR3
     CARD_CLK_TMR->MR3 = 3;     // Set the period, the timer will be reset to zero once it reaches this value
@@ -72,13 +75,14 @@ void IO_Init() {
     CARD_UART_CLK_IO_CON |= 0x03; // Port 0 Pin 17 UART SCLK
     CARD_UART->HDEN = 0; // Disable HDEN
     CARD_UART->SYNCCTRL = 0; // Disable SyncCTRL
-    LPC_SYSCON->UARTCLKDIV = 1;             // divided
+
+    LPC_SYSCON->UARTCLKDIV = 1;  // No divide UART_PCLK = 12MHz
+    // here need to setup baudrate
+
+
     CARD_UART->OSR = (uint32_t)(371 << 4); // Oversampling by 372
-    CARD_UART->DLL = 0x01; // }
-    CARD_UART->DLM = 0x00; // } pass the USART clock through without division
     CARD_UART->LCR = 0x03; // 8 bit
-//    LPC_USART->FDR = (DivAddVal & 0x0F) | ((MulVal & 0x0F) << 4);
-    CARD_UART->FCR = 0x07;
+    CARD_UART->FCR = 0x07; // Reset FIFO
     CARD_UART->LCR |= (1 << 3); // Parity Enable
     CARD_UART->LCR |= (0x01 << 4); // Even Parity
     CARD_UART->SCICTRL |= 0x01;
