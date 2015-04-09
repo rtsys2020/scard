@@ -28,9 +28,16 @@
 
 #define CARD_RX_ON_IRQ()    CARD_UART->IER = CARD_UART_IR_RDA
 
+#define CARD_CLK_TMR        LPC_CT16B1
 #define CARD_CLK_PORT       0
-#define CARD_CLK_PIN        17
-#define CARD_CLK_IO_CON     LPC_IOCON->PIO0_17
+#define CARD_CLK_PIN        22
+#define CARD_CLK_IO_CON     LPC_IOCON->PIO0_22
+#define CLK_ON()            CARD_CLK_TMR->TCR = 1;
+#define CLK_OFF()           CARD_CLK_TMR->TCR = 0;
+
+//#define CARD_CLK_PORT       0
+//#define CARD_CLK_PIN        17
+//#define CARD_CLK_IO_CON     LPC_IOCON->PIO0_17
 
 #define CARD_RST_PORT       1
 #define CARD_RST_PIN        24
