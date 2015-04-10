@@ -13,6 +13,8 @@
 #include "rj_lib_LPC11Uxx.h"
 #include "sw_cmd_uart.h"
 
+#define MAX_ATR_SIZE        32
+
 #define CARD_PWR_PORT       1 // 38
 #define CARD_PWR_PIN        22
 #define PWR_ON()            PinClear(CARD_PWR_PORT, CARD_PWR_PIN)

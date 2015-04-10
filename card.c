@@ -7,9 +7,18 @@
 #include "card.h"
 #include "delay.h"
 
+/* Initially, UART speed is 10752.69 bit/s (f=4MHz, F=372, D=1)
+ * "The etu initially used by the card shall be equal to 372 clock cycles (i.e., during the answer to reset, the values
+ * of the transmission parameters are the default values Fd = 372 and Dd = 1)." Page 15.
+ * 372 clock/symbol makes bitrate about 10753.  */
+#define DEFAULT_BAUDRATE 8333
+//#define DEFAULT_BAUDRATE    10753
+#define SET_BAUD(A)         regVal = LPC_SYSCON->UARTCLKDIV; \
+Fdiv = (((SystemCoreClock/LPC_SYSCON->SYSAHBCLKDIV)/regVal)/16)/A ; \
+CARD_UART->DLM = Fdiv / 256; \
+CARD_UART->DLL = Fdiv % 256;
 
-#define DEFAULT_BAUDRATE    10753
-
+uint8_t CardATR[MAX_ATR_SIZE];
 uint8_t CardBuf[256];
 uint32_t Cnt;
 bool Busy;
@@ -35,7 +44,7 @@ void ColdReset() {
     _delay_ms(4);
     UartSW_Printf("2\r");
     Activation();
-    _delay_us(207);     // Wait more than 400 clock cycles
+    _delay_us(407);     // Wait more than 400 clock cycles
     UartSW_Printf("3\r");
     RST_HI();
 }
@@ -68,26 +77,30 @@ void ClockInit() {
 }
 
 void IO_Init() {
+    uint32_t Fdiv;
+    uint32_t regVal;
+
     NVIC_DisableIRQ(UART_IRQn);
     CARD_UART_IO_CON &= ~0x07;  // Clean
     CARD_UART_IO_CON |= 0x01;   // Port 0 Pin 19 is UART IO
-    CARD_UART_CLK_IO_CON &= ~0x07; // Clean
-    CARD_UART_CLK_IO_CON |= 0x03; // Port 0 Pin 17 UART SCLK
+//    CARD_UART_CLK_IO_CON &= ~0x07; // Clean
+//    CARD_UART_CLK_IO_CON |= 0x03; // Port 0 Pin 17 UART SCLK
+
     CARD_UART->HDEN = 0; // Disable HDEN
     CARD_UART->SYNCCTRL = 0; // Disable SyncCTRL
-
     LPC_SYSCON->UARTCLKDIV = 1;  // No divide UART_PCLK = 12MHz
     // here need to setup baudrate
+    SET_BAUD(DEFAULT_BAUDRATE);
+//    CARD_UART->OSR = (uint32_t)(371 << 4); // Oversampling by 371
 
-
-    CARD_UART->OSR = (uint32_t)(371 << 4); // Oversampling by 372
     CARD_UART->LCR = 0x03; // 8 bit
+    CARD_UART->LCR |= (1 << 2); // 2 stop bits
     CARD_UART->FCR = 0x07; // Reset FIFO
     CARD_UART->LCR |= (1 << 3); // Parity Enable
     CARD_UART->LCR |= (0x01 << 4); // Even Parity
-    CARD_UART->SCICTRL |= 0x01;
+    CARD_UART->SCICTRL = 0x01;
     LPC_SYSCON->SYSAHBCLKCTRL |= (1<<12);   // Enable Uart Clock
-    CARD_UART->IER = IER_RBR | IER_RLS; // Enable Rx Irq
+    CARD_UART->IER = IER_RBR; // Enable Rx Irq
     NVIC_EnableIRQ(UART_IRQn);
     UartSW_Printf("Card Init\r");
 }
@@ -98,6 +111,7 @@ void Card_Init() {
     IO_Init();
     ClockInit();
     Busy = false;
+    Cnt = 0;
     // ColdReset
     ColdReset();
     // Get ATR
