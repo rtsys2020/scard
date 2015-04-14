@@ -43,8 +43,8 @@
 #define LSR_TEMT            0x40
 #define LSR_RXFE            0x80
 
-#define CARD_RX_ON_IRQ()    CARD_UART->IER = CARD_UART_IR_RDA
 
+#define CARD_RX_ON_IRQ()    CARD_UART->IER = CARD_UART_IR_RDA
 #define CARD_CLK_TMR        LPC_CT16B1
 #define CARD_CLK_PORT       0
 #define CARD_CLK_PIN        22
@@ -52,9 +52,10 @@
 #define CLK_ON()            CARD_CLK_TMR->TCR = 1;
 #define CLK_OFF()           CARD_CLK_TMR->TCR = 0;
 
-#define CARD_UART_CLK_PORT       0
-#define CARD_UART_CLK_PIN        17
-#define CARD_UART_CLK_IO_CON     LPC_IOCON->PIO0_17
+#define TX_ON()             LPC_IOCON->PIO0_19 |= 0x01; // Port 0 Pin 19 is UART TXD
+#define TX_OFF()            LPC_IOCON->PIO0_19 &= ~0x01;
+#define RX_ON()             LPC_IOCON->PIO0_18 |= 0x01;   // Port 0 Pin 18 is UART RXD
+#define RX_OFF()            LPC_IOCON->PIO0_18 &= ~0x01;
 
 #define CARD_RST_PIN        PIO1_24
 //#define RST_HI()            gpio_set_pin(CARD_RST_PIN);
@@ -69,9 +70,10 @@ typedef enum {
 typedef struct {
     uint8_t ATR[MAX_ATR_SIZE];
     uint8_t ATRLength;
+    uint8_t dBuf[256];
+    uint32_t dLen;
     CardState_t State;
 } ISO7816_SC;
-
 
 bool scard_init(ISO7816_SC* scard);
 bool scard_power_on(ISO7816_SC* scard);

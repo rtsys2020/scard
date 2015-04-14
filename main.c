@@ -24,12 +24,13 @@ int main (void) {
     SystemCoreClockUpdate();
     Delay_Init();
     Led_Init();
-    UartSW_Init(57600);
+    UartSW_Init(4800);
     UartSW_Printf("SC AHB:%uMHz\r", SystemCoreClock/1000000);
 
     ISO7816_SC scard;
 
     scard_init(&scard);
+    scard_power_on(&scard);
 
 //    Usb_Init();
     uint32_t Timer;
