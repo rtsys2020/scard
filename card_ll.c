@@ -11,8 +11,6 @@
 #include "sw_cmd_uart.h"
 #include "delay.h"
 
-#define BLUE_LED    PIO0_23
-
 uint8_t defaultATR[] = {
     0x3B, 0xDC, 0x18, 0xFF, 0x81, 0x91, 0xFE, 0x1F,
     0xC3, 0x80, 0x73, 0xC8, 0x21, 0x13, 0x66, 0x01,
@@ -151,9 +149,20 @@ bool scard_cmd_getATR(ISO7816_SC* scard) {
     return isValid(scard->ATR, scard->ATRLength);
 }
 
+static void scard_parse(uint8_t* ATRBuf, uint8_t Len) {
+    uint8_t* p = ATRBuf;
+    uint8_t TS = *p++;
+    uint8_t T0 = *p++;
+    uint8_t Yi = T0 & 0xF0;
+    uint8_t K = T0 & 0x0F;
+    UartSW_Printf("TS: %X\r", TS);
+    UartSW_Printf("hbLen: %X\r", K);
+}
+
 bool scard_power_on(ISO7816_SC* scard) {
     if (!scard_cmd_getATR(scard))
         return false;
+    scard_parse(scard->ATR, scard->ATRLength);
     //    scard_pps_req(scard); // PPS exchange
     UartSW_Printf("ATR: %A\r", scard->ATR, scard->ATRLength, ' ');
     scard->State = scs_Idle;
