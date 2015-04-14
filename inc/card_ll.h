@@ -52,10 +52,9 @@
 #define CLK_ON()            CARD_CLK_TMR->TCR = 1;
 #define CLK_OFF()           CARD_CLK_TMR->TCR = 0;
 
-#define TX_ON()             LPC_IOCON->PIO0_19 |= 0x01; // Port 0 Pin 19 is UART TXD
-#define TX_OFF()            LPC_IOCON->PIO0_19 &= ~0x01;
-#define RX_ON()             LPC_IOCON->PIO0_18 |= 0x01;   // Port 0 Pin 18 is UART RXD
-#define RX_OFF()            LPC_IOCON->PIO0_18 &= ~0x01;
+#define IO_RESET()          LPC_IOCON->PIO0_19 &= ~0x07;
+#define IO_ENABLE()         LPC_IOCON->PIO0_19 |= 0x01; // Port 0 Pin 19 is UART TXD
+#define IO_DISABLE()        LPC_IOCON->PIO0_19 &= ~0x01;
 
 #define CARD_RST_PIN        PIO1_24
 //#define RST_HI()            gpio_set_pin(CARD_RST_PIN);
@@ -73,6 +72,7 @@ typedef struct {
     uint8_t dBuf[256];
     uint32_t dLen;
     CardState_t State;
+    bool TSreceived;
 } ISO7816_SC;
 
 bool scard_init(ISO7816_SC* scard);

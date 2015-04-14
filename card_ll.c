@@ -25,7 +25,7 @@ ISO7816_SC* pScard;
  * 372 clock/symbol makes bitrate about 10753.  */
 #define DEFAULT_BAUDRATE    10753
 #define SET_BAUD(A)         regVal = LPC_SYSCON->UARTCLKDIV; \
-Fdiv = (((48000000/LPC_SYSCON->SYSAHBCLKDIV)/regVal)/16)/A ; \
+Fdiv = (((38000000/LPC_SYSCON->SYSAHBCLKDIV)/regVal)/16)/A ; \
 CARD_UART->DLM = Fdiv / 256; \
 CARD_UART->DLL = Fdiv % 256;
 
@@ -73,66 +73,25 @@ void scard_gpio_init() {
 }
 
 void UART_IRQHandler() {
-//    uint8_t IIRValue, LSRValue;
-//    uint8_t Dummy = Dummy;
-//    IIRValue = LPC_USART->IIR;
-//    IIRValue >>= 1;           /* skip pending bit in IIR */
-//    IIRValue &= 0x07;         /* check bit 1~3, interrupt identification */
-//
-//    if (IIRValue == IIR_RLS) {
-//        LSRValue = LPC_USART->LSR;
-//        if (LSRValue & (LSR_OE | LSR_PE | LSR_FE | LSR_RXFE | LSR_BI)) {
-//            pScard->dBuf[pScard->dLen++] = LPC_USART->RBR;
-//            return;
-//        }
-//        if (LSRValue & LSR_RDR) {
-//            pScard->dBuf[pScard->dLen++] = LPC_USART->RBR;
-//        }
-//    }
-//    else if (IIRValue == IIR_RDA) {
-//        pScard->dBuf[pScard->dLen++] = LPC_USART->RBR;
-//    }
-    uint8_t IIRValue, LSRValue;
-    uint8_t Dummy = Dummy;
+    uint8_t IIRValue;
+    uint8_t RxByte;
     IIRValue = LPC_USART->IIR;
     IIRValue >>= 1;           /* skip pending bit in IIR */
     IIRValue &= 0x07;         /* check bit 1~3, interrupt identification */
-    if (IIRValue == IIR_RLS) {
-      LSRValue = LPC_USART->LSR;
-      /* Receive Line Status */
-      if (LSRValue & (LSR_OE | LSR_PE | LSR_FE | LSR_RXFE | LSR_BI))
-      {
-        /* There are errors or break interrupt */
-        /* Read LSR will clear the interrupt */
-        Dummy = LPC_USART->RBR;   /* Dummy read on RX to clear
-                                  interrupt, then bail out */
-        return;
-      }
-      if (LSRValue & LSR_RDR) /* Receive Data Ready */
-      {
-        pScard->dBuf[pScard->dLen++] = LPC_USART->RBR;
-      }
-    }
-    else if (IIRValue == IIR_RDA) /* Receive Data Available */
+    if (IIRValue == IIR_RDA) /* Receive Data Available */
     {
-        pScard->dBuf[pScard->dLen++] = LPC_USART->RBR;
-    }
+        RxByte = LPC_USART->RBR;
+        if(pScard->TSreceived) pScard->dBuf[pScard->dLen++] = RxByte;
+        else {
+            if((RxByte == 0x3B) || (RxByte == 0x3F)) { // Check TS
+                pScard->dBuf[pScard->dLen++] = RxByte;
+                pScard->TSreceived = !pScard->TSreceived;
+                return;
+            } // TS correct
+        } // // Receive data
+    } // Rx Irq
     return;
 }
-
-//static inline uint8_t read_byte(uint8_t *AByte) {
-//   for(uint16_t i=0; i<459; i++) {
-//       uint8_t IIRValue = LPC_USART->IIR;
-//       IIRValue >>= 1;
-////       UartSW_Printf("%X\r", LSRValue);
-//        if (IIRValue & IIR_RDA) {
-//            *AByte = LPC_USART->RBR;
-//            return 0;
-//        }
-//        _delay_us(100);
-//    }
-//    return 1;
-//}
 
 // Enable Timer to provide 4 MHz clock source to the card
 void scard_clock_init() {
@@ -155,52 +114,37 @@ void scard_dataIO_init() {
     uint32_t Fdiv;
     uint32_t regVal;
     NVIC_DisableIRQ(UART_IRQn);
-    LPC_IOCON->PIO0_18 &= ~0x07;    /*  UART I/O config */
-    LPC_IOCON->PIO0_19 &= ~0x07;
-    TX_ON();
-//    RX_ON();
-    LPC_SYSCON->SYSAHBCLKCTRL |= (1<<12);
-    LPC_SYSCON->UARTCLKDIV = 2;     /* divided by 1 */
-//    CARD_UART->LCR = 0x9B;  /* 8 bits, Even Parity, Parity Enable, 1 Stop bit */
-    CARD_UART->LCR = 0x80; // DLAB = 1;
-    CARD_UART->LCR |= 0x03; // 8 bit
-    CARD_UART->LCR |= (0 << 2); // 1 stop bit
-    CARD_UART->LCR |= (1 << 3);  // Parity Enable
-    CARD_UART->LCR |= (0x1 << 4); // Even Parity
-
-    regVal = LPC_SYSCON->UARTCLKDIV;
-    uint32_t UartPCLK = ((38000000/LPC_SYSCON->SYSAHBCLKDIV)/regVal);
-    Fdiv = (UartPCLK / (16 * DEFAULT_BAUDRATE));
+    IO_RESET();
+    IO_ENABLE();
+    LPC_SYSCON->SYSAHBCLKCTRL |= (1<<12); // Enable Uart Clock
+    LPC_SYSCON->UARTCLKDIV = 1;     // not divided
+    CARD_UART->LCR = 0x9B;  // 8 bits, Even Parity, Parity Enable, 1 Stop bit
+    SET_BAUD(DEFAULT_BAUDRATE);
     CARD_UART->DLL = (uint8_t)(Fdiv & 0xFF);
     CARD_UART->DLM = (uint8_t)(Fdiv >> 8);
-    CARD_UART->LCR &= ~0x80;      /* DLAB = 0 */
-    CARD_UART->FCR = 0x07;        /* Enable and reset TX and RX FIFO. */
-    CARD_UART->SCICTRL = 0x01; // Enable Smartcard interface
-    regVal = CARD_UART->LSR;
-    while (( CARD_UART->LSR & (LSR_THRE|LSR_TEMT)) != (LSR_THRE|LSR_TEMT) );
-    while ( CARD_UART->LSR & LSR_RDR ) {
-      regVal = CARD_UART->RBR;    /* Dump data from RX FIFO */
+    CARD_UART->LCR &= ~0x80;      // DLAB = 0
+    CARD_UART->FCR = 0x07;        // Enable and reset TX and RX FIFO
+    CARD_UART->SCICTRL = 0x01;    // Enable Smartcard interface
+    while (CARD_UART->LSR & LSR_RDR) {
+      regVal = CARD_UART->RBR;    // Dump data from RX FIFO
     }
-    CARD_UART->IER = IER_RBR;   /* Enable UART interrupt */
-    NVIC_EnableIRQ(UART_IRQn);
- }
+    CARD_UART->IER = IER_RBR;   // Enable UART interrupt
+    NVIC_EnableIRQ(UART_IRQn); // Enable IRQ
+}
 
+static bool isValid(uint8_t *pBuf, uint8_t Length) {
+    uint8_t TCK = 0;
+    for(uint8_t i = 1; i < Length; i++)
+        TCK ^= pBuf[i];
+    return (TCK == 0)? true : false;
+}
 
 bool scard_cmd_getATR(ISO7816_SC* scard) {
     scard_ColdRst(scard);
     _delay_ms(99); // wait for ATR recieving
-    UartSW_Printf("(%u) %A\r", scard->dLen, scard->dBuf, scard->dLen, ' ');
-//    uint8_t b = 0;
-//    if(read_byte(&b)) {
-//        UartSW_Printf("TS fail\r");
-//        return false;
-//    }
-//    UartSW_Printf("TS: %X\r", b);
-
-    // this is an jam
     memcpy(scard->ATR, scard->dBuf, scard->dLen);
     scard->ATRLength = scard->dLen;
-    return true;
+    return isValid(scard->ATR, scard->ATRLength);
 }
 
 bool scard_power_on(ISO7816_SC* scard) {
@@ -239,5 +183,6 @@ bool scard_init(ISO7816_SC* scard) {
     scard_clock_init();
     pScard = scard;
     pScard->dLen = 0;
+    pScard->TSreceived = false;
     return false; // Dummy
 }
