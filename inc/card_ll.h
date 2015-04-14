@@ -17,8 +17,8 @@
 #define CARD_PWR_PIN        PIO1_22
 //#define PWR_ON()            gpio_reset_pin(CARD_PWR_PIN);
 //#define PWR_OFF()           gpio_set_pin(CARD_PWR_PIN);
-#define PWR_ON()            PinSet(1, 22);
-#define PWR_OFF()           PinClear(1, 22);
+#define PWR_ON()            PinClear(1, 22);
+#define PWR_OFF()           PinSet(1, 22);
 
 #define CARD_IO_PORT        0
 #define CARD_IO_PIN         19
