@@ -1,5 +1,7 @@
 /*
- * card_ll.c - Card Low Level
+ * card_ll.c - Card Low Level. Here is a smart card low level driver working
+ * as described in ISO7816-3 Protocol.
+ * Main words: LPC11Uxx, ISO7816-3, Smartcard UART interface, USART in SmartCard mode
  *
  *  Created on: 10 апр. 2015 г.
  *      Author: RLeonov
@@ -43,8 +45,7 @@ void scard_deactivation(ISO7816_SC* scard) {
 }
 
 // stop everything then activate card again.
-void scard_ColdRst(ISO7816_SC* scard) {
-    UartSW_Printf("Cld Rst\r");
+void scard_cold_rst(ISO7816_SC* scard) {
     scard_deactivation(scard);
 //    sleep_ms(4);
     _delay_ms(4);
@@ -55,7 +56,7 @@ void scard_ColdRst(ISO7816_SC* scard) {
 }
 
 // Reset by the HW reset pin
-void scard_WarmRst() {
+void scard_warm_rst() {
     RST_LO();
 //    sleep_us(207);     // Wait more than 400 clock cycles
     _delay_ms(207);
@@ -111,17 +112,16 @@ void scard_clock_init() {
 }
 
 void scard_dataIO_init() {
-    uint32_t Fdiv;
-    uint32_t regVal;
+    uint32_t Fdiv, regVal;
     NVIC_DisableIRQ(UART_IRQn);
     IO_RESET();
     IO_ENABLE();
     LPC_SYSCON->SYSAHBCLKCTRL |= (1<<12); // Enable Uart Clock
     LPC_SYSCON->UARTCLKDIV = 1;     // not divided
-    CARD_UART->LCR = 0x9B;  // 8 bits, Even Parity, Parity Enable, 1 Stop bit
-    SET_BAUD(DEFAULT_BAUDRATE);
-    CARD_UART->DLL = (uint8_t)(Fdiv & 0xFF);
-    CARD_UART->DLM = (uint8_t)(Fdiv >> 8);
+    CARD_UART->LCR = 0x9B;          // 8 bits, Even Parity, Parity Enable, 1 Stop bit
+    SET_BAUD(DEFAULT_BAUDRATE);     // Setup baudrate
+    CARD_UART->DLL = (uint8_t)(Fdiv & 0xFF); // setup divider
+    CARD_UART->DLM = (uint8_t)(Fdiv >> 8); // setup divider
     CARD_UART->LCR &= ~0x80;      // DLAB = 0
     CARD_UART->FCR = 0x07;        // Enable and reset TX and RX FIFO
     CARD_UART->SCICTRL = 0x01;    // Enable Smartcard interface
@@ -140,8 +140,12 @@ static bool isValid(uint8_t *pBuf, uint8_t Length) {
 }
 
 bool scard_cmd_getATR(ISO7816_SC* scard) {
-    scard_ColdRst(scard);
+    scard_cold_rst(scard);
     _delay_ms(99); // wait for ATR recieving
+    if(scard->dLen == 0) {
+        UartSW_Printf("sc absent\r");
+        return false;
+    }
     memcpy(scard->ATR, scard->dBuf, scard->dLen);
     scard->ATRLength = scard->dLen;
     return isValid(scard->ATR, scard->ATRLength);
@@ -184,5 +188,6 @@ bool scard_init(ISO7816_SC* scard) {
     pScard = scard;
     pScard->dLen = 0;
     pScard->TSreceived = false;
+    UartSW_Printf("sc init\r");
     return false; // Dummy
 }
