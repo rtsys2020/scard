@@ -63,6 +63,7 @@
 #define RST_LO()            PinClear(1, 24);
 
 void card_lld_init(ISO7816_SC* scard);
+uint32_t card_lld_data_exchange();
 
 
 #endif /* INC_UART_ISO_H_ */

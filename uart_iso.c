@@ -6,6 +6,7 @@
  */
 
 #include "uart_iso.h"
+#include "sw_cmd_uart.h"
 
 ISO7816_SC* pScard;
 
@@ -64,6 +65,12 @@ static void card_data_init() {
     }
     CARD_UART->IER = IER_RBR;   // Enable UART interrupt
     NVIC_EnableIRQ(UART_IRQn); // Enable IRQ
+}
+
+uint32_t card_lld_data_exchange() {
+    UartSW_Printf("DEx\r");
+    UartSW_Printf("--> %A\r", pScard->dBuf, pScard->dLen, ' ');
+    return 0; // return the outer length
 }
 
 void card_lld_init(ISO7816_SC* scard) {

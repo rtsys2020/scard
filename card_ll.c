@@ -76,7 +76,7 @@ static void parseATR(ISO7816_SC* scard) {
     uint8_t K = T0 & 0x0F;
     uint8_t i = 1;
 #ifdef ATR_CHANGE
-    UartSW_Printf("ATR: %A\r", scard->ATR, scard->ATRLength, ' ');
+//    UartSW_Printf("ATR: %A\r", scard->ATR, scard->ATRLength, ' ');
 #endif
     if(TS == 0x3F) {
         UartSW_Printf("Inverse needed\r");
@@ -139,12 +139,20 @@ void scard_power_off(ISO7816_SC* scard) {
 
 int scard_execute_cmd(ISO7816_SC* scard, const uint8_t* pInBuf, unsigned int inLength, uint8_t* pOutBuf, unsigned int* pOutLength) {
     int res = -1;
-    if (!scard->State != scs_Idle)
+    uint32_t outLen;
+    if (scard->State != scs_Idle) {
         return res;
-    // TxCommand
-    if(inLength > CARD_BUFFER_SIZE)
+    }
+    if(inLength > CARD_BUFFER_SIZE) {
         return res;
-    // ReadAnswer
+    }
+    memcpy(scard->dBuf, pInBuf, inLength); // copy data to CardBuf
+    scard->dLen = inLength;
+    outLen = card_lld_data_exchange();
+    if(outLen != 0) {
+        memcpy(pOutBuf, scard->dBuf, outLen);
+        res = *pOutLength = outLen;
+    }
     return res;
 }
 
