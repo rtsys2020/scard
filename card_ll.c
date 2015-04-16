@@ -126,8 +126,8 @@ static void parseATR(ISO7816_SC* scard) {
 
 static bool pps_exchange() {
 #define PPS0    0x11       // PPS1 present, protocol = 1
-//#define PPS1    0x08     // 0000{f=4; Fi=372}, 1000{Di=12}  => bitrate = 129032 bps
-#define PPS1    0x01       // 0000{f=4; Fi=372}, 0001{Di=1}  => bitrate = 10753 bps
+#define PPS1    0x08     // 0000{f=4; Fi=372}, 1000{Di=12}  => bitrate = 129032 bps
+//#define PPS1    0x01       // 0000{f=4; Fi=372}, 0001{Di=1}  => bitrate = 10753 bps
     uint8_t pps_req[4];
     pps_req[0] = 0xFF;     // PPSS identifies the PPS request or response and is set to 'FF'
     pps_req[1] = PPS0;     // PPS0
@@ -138,6 +138,7 @@ static bool pps_exchange() {
     if(card_lld_data_synch(pps_req, 4, 4) == 0) {
         return false;
     }
+    card_switch_to_highspeed();
     UartSW_Printf("PPS ok\r");
     return true;
 }

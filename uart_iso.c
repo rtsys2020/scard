@@ -20,6 +20,7 @@ uint8_t TxCnt;
  * of the transmission parameters are the default values Fd = 372 and Dd = 1)." Page 15.
  * 372 clock/symbol makes bitrate about 10753.  */
 #define DEFAULT_BAUDRATE    10753
+#define HIGHSPEED_BAUDRATE  129036
 #define SET_BAUD(A)         regVal = LPC_SYSCON->UARTCLKDIV; \
 Fdiv = (((38000000/LPC_SYSCON->SYSAHBCLKDIV)/regVal)/16)/A ; \
 CARD_UART->DLM = Fdiv / 256; \
@@ -76,6 +77,15 @@ static void card_data_init() {
     NVIC_EnableIRQ(UART_IRQn);              // Enable IRQ
 }
 
+void card_switch_to_highspeed() {
+    uint32_t Fdiv, regVal;
+    CARD_UART->LCR |= 0x80;                 // DLAB = 1
+    SET_BAUD(HIGHSPEED_BAUDRATE);           // Setup highspeed baudrate
+    CARD_UART->DLL = (uint8_t)(Fdiv & 0xFF);// setup divider
+    CARD_UART->DLM = (uint8_t)(Fdiv >> 8);  // setup divider
+    CARD_UART->LCR &= ~0x80;                // DLAB = 0
+}
+
 void start_tx() {
     pScard->LRC ^= pScard->NAD;             // Count LRC checksum
     TxState = cmd_TxPCB;                    // Set state to transmit PCB
@@ -110,9 +120,7 @@ uint32_t card_lld_data_synch(uint8_t* pData, uint8_t inLen, uint8_t OutLength) {
 // Transmit IBlock
 void TxIBlock(uint8_t *pBuf, uint8_t Len) {
     pScard->NAD = 0;
-    UartSW_Printf("1 %X\r", pScard->PCB);
     pScard->PCB ^= I_NS_BIT;
-    UartSW_Printf("2 %X\r", pScard->PCB);
     pScard->LEN = Len;
     pScard->LRC = 0;
     pTxByte = pBuf;

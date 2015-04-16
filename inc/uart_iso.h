@@ -74,6 +74,7 @@ typedef enum {
 } cmd_RxState_t;
 
 void card_lld_init(ISO7816_SC* scard);
+void card_switch_to_highspeed();
 uint32_t card_lld_data_synch(uint8_t* pData, uint8_t inLen, uint8_t OutLength);
 bool card_lld_data_exchange();
 
