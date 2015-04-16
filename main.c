@@ -37,8 +37,20 @@ int main (void) {
     FBuf[1] = 0xA4;
     FBuf[2] = 0x04;
     FBuf[3] = 0x00;
-
     scard_execute_cmd(&scard, FBuf, 4, NULL, NULL);
+
+    FBuf[0] = 0x80;
+    FBuf[1] = 0xA4;
+    FBuf[2] = 0x04;
+    FBuf[3] = 0x00;
+    scard_execute_cmd(&scard, FBuf, 4, NULL, NULL);
+
+    FBuf[0] = 0x80;
+    FBuf[1] = 0x04;
+    FBuf[2] = 0x04;
+    FBuf[3] = 0x00;
+    scard_execute_cmd(&scard, FBuf, 4, NULL, NULL);
+
 
 //    Usb_Init();
     uint32_t Timer;

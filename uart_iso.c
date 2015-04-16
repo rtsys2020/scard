@@ -110,7 +110,9 @@ uint32_t card_lld_data_synch(uint8_t* pData, uint8_t inLen, uint8_t OutLength) {
 // Transmit IBlock
 void TxIBlock(uint8_t *pBuf, uint8_t Len) {
     pScard->NAD = 0;
-    pScard->PCB = I_PCB;
+    UartSW_Printf("1 %X\r", pScard->PCB);
+    pScard->PCB ^= I_NS_BIT;
+    UartSW_Printf("2 %X\r", pScard->PCB);
     pScard->LEN = Len;
     pScard->LRC = 0;
     pTxByte = pBuf;
@@ -162,7 +164,8 @@ static inline void rx_on_irq() {
             pScard->LRC ^= RxByte;
             pScard->LEN = RxByte;
             pScard->dLen = 0;
-            RxState = cmd_RxINFO;
+            if(pScard->LEN == 0) RxState = cmd_RxLRC;
+            else RxState = cmd_RxINFO;
             break;
         case cmd_RxINFO:
             pScard->LRC ^= RxByte;
