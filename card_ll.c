@@ -125,32 +125,32 @@ static void parseATR(ISO7816_SC* scard) {
 }
 
 static bool pps_exchange() {
-    // send to card pps request and get pps response
-#define PPS0    0x11    // PPS1 present, protocol = 1
-//#define PPS1    0x08    // 0000{f=4; Fi=372}, 1000{Di=12}  => bitrate = 129032 bps
-#define PPS1    0x01    // 0000{f=4; Fi=372}, 0001{Di=1}  => bitrate = 10753 bps
+#define PPS0    0x11       // PPS1 present, protocol = 1
+//#define PPS1    0x08     // 0000{f=4; Fi=372}, 1000{Di=12}  => bitrate = 129032 bps
+#define PPS1    0x01       // 0000{f=4; Fi=372}, 0001{Di=1}  => bitrate = 10753 bps
     uint8_t pps_req[4];
     pps_req[0] = 0xFF;     // PPSS identifies the PPS request or response and is set to 'FF'
     pps_req[1] = PPS0;     // PPS0
     pps_req[2] = PPS1;     // PPS1
-    pps_req[3] = pps_req[0] ^ pps_req[1] ^ pps_req[2]; // PCK
+    pps_req[3] = pps_req[0] ^ \
+                 pps_req[1] ^ \
+                 pps_req[2]; // PCK
     if(card_lld_data_synch(pps_req, 4, 4) == 0) {
         return false;
     }
     UartSW_Printf("PPS ok\r");
     return true;
-
 }
 
 bool scard_power_on(ISO7816_SC* scard) {
-    if (!getATR(scard)) {
+    if (!getATR(scard)) {       // Try to get ATR
         UartSW_Printf("ATR err\r");
         return false;
     }
-    parseATR(scard);
+    parseATR(scard);            // Parse ATR ang replace the Historical bytes
     UartSW_Printf("ATR: %A\r", scard->ATR, scard->ATRLength, ' ');
-    pps_exchange(scard); // PPS exchange not done yet
-    scard->State = scs_Idle;
+    pps_exchange(scard);        // PPS exchange to default settings TODO: increase speed
+    scard->State = scs_Idle;    // Switch card state
     return true;
 }
 
@@ -164,6 +164,7 @@ int scard_execute_cmd(ISO7816_SC* scard, const uint8_t* pInBuf, unsigned int inL
     if ((scard->State != scs_Idle) || (inLength > CARD_BUFFER_SIZE)) {
         return res;
     }
+    scard->State = scs_Busy;
     UartSW_Printf("-->(%u) ", inLength);
     if(inLength) UartSW_Printf("%A ", pInBuf, inLength, ' ');
     UartSW_Printf("\r");
@@ -176,7 +177,9 @@ int scard_execute_cmd(ISO7816_SC* scard, const uint8_t* pInBuf, unsigned int inL
         //        res = *pOutLength = outLen;
         UartSW_Printf("\r");
         res = scard->dLen;
+        scard->State = scs_Idle;
     }
+    else scard->State = scs_Error;
     return res;
 }
 
