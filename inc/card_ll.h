@@ -12,6 +12,9 @@
 #include "LPC11Uxx.h"
 #include "rj_lib_LPC11Uxx.h"
 
+//#define ATR_VERBOSE
+#define ATR_CHANGE
+
 #define MAX_ATR_SIZE        32
 
 #define CARD_PWR_PIN        PIO1_22
@@ -67,6 +70,13 @@ typedef enum {
 } CardState_t;
 
 typedef struct {
+    // internal usage
+    uint8_t FindexDindex;
+    uint8_t BWI_CWI_T1;
+    uint8_t N;
+    uint8_t ProtocolType;
+    uint8_t IFSC;
+    // external usage
     uint8_t ATR[MAX_ATR_SIZE];
     uint8_t ATRLength;
     uint8_t dBuf[256];

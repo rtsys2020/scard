@@ -11,10 +11,8 @@
 #include "sw_cmd_uart.h"
 #include "delay.h"
 
-uint8_t defaultATR[] = {
-    0x3B, 0xDC, 0x18, 0xFF, 0x81, 0x91, 0xFE, 0x1F,
-    0xC3, 0x80, 0x73, 0xC8, 0x21, 0x13, 0x66, 0x01,
-    0x06, 0x11, 0x59, 0x00, 0x01, 0x28
+uint8_t HistoricalBytes[] = {
+    0x80, 0x73, 0xC8, 0x21, 0x13, 0x66, 0x01, 0x06, 0x11, 0x59, 0x00, 0x01
 };
 
 ISO7816_SC* pScard;
@@ -131,6 +129,7 @@ void scard_dataIO_init() {
 }
 
 static bool isValid(uint8_t *pBuf, uint8_t Length) {
+    // Check TCK Here
     uint8_t TCK = 0;
     for(uint8_t i = 1; i < Length; i++)
         TCK ^= pBuf[i];
@@ -149,20 +148,88 @@ bool scard_cmd_getATR(ISO7816_SC* scard) {
     return isValid(scard->ATR, scard->ATRLength);
 }
 
-static void scard_parse(uint8_t* ATRBuf, uint8_t Len) {
-    uint8_t* p = ATRBuf;
+static void scard_parse(ISO7816_SC* scard) {
+    uint8_t* p = scard->ATR;
     uint8_t TS = *p++;
     uint8_t T0 = *p++;
     uint8_t Yi = T0 & 0xF0;
     uint8_t K = T0 & 0x0F;
+    uint8_t i = 1;
+#ifdef ATR_CHANGE
+    UartSW_Printf("ATR: %A\r", scard->ATR, scard->ATRLength, ' ');
+#endif
+    if(TS == 0x3F) {
+        UartSW_Printf("Inverse needed\r");
+    }
+#ifdef ATR_VERBOSE
     UartSW_Printf("TS: %X\r", TS);
-    UartSW_Printf("hbLen: %X\r", K);
+    UartSW_Printf("HisBLen: %X\r", K);
+#endif
+    // Read TA, TB, TC, TD as needed
+    while(Yi != 0) { // while TD is present
+        if(Yi & 0b00010000) { // TAi is present (bit 5 is set)
+            Yi &= 0b11101111;       // Clear Yi
+            if(i == 1) {
+                scard->FindexDindex = *p++; // TA1 conveys F & D values
+#ifdef ATR_VERBOSE
+                UartSW_Printf("TA%u =%X\r", i, scard->FindexDindex);
+#endif
+            }
+            if(i > 2) {
+                if(scard->ProtocolType == 1) scard->IFSC = *p++;
+#ifdef ATR_VERBOSE
+                UartSW_Printf("TA%u =%X\r", i, scard->IFSC);
+#endif
+            }
+        }
+        if(Yi & 0b00100000) { // TBi is present (bit 6 is set)
+            Yi &= 0b11011111;       // Clear Yi
+            if(i > 2) {
+                scard->BWI_CWI_T1 = *p++;
+#ifdef ATR_VERBOSE
+                UartSW_Printf("TB%u=%X\r", i, scard->BWI_CWI_T1);
+#endif
+            }
+        }
+        if(Yi & 0b01000000) {       // TCi is present (bit 7 is set)
+            Yi &= 0b10111111;       // Clear Yi
+            if(i == 1) scard->N = *p++;
+#ifdef ATR_VERBOSE
+            UartSW_Printf("TC%u=%X\r", i, scard->N);
+#endif
+        }
+        if(Yi & 0b10000000) {       // TDi is present (bit 8 is set)
+            Yi = *p & 0xF0;
+#ifdef ATR_VERBOSE
+            UartSW_Printf("TD%u=%X\r", i, *p);
+#endif
+            // Get protocol type
+            if(i == 1) {
+                scard->ProtocolType = *p++ & 0x0F;    // Mask bits representing protocol type
+                if((scard->ProtocolType != 0) && (scard->ProtocolType != 1)) return; // Only T0 & T1 are supported here
+            }
+        }
+        i++;
+    }
+#ifdef ATR_CHANGE
+    memcpy(&scard->ATR[8], HistoricalBytes, sizeof(HistoricalBytes) - 1);
+    scard->ATRLength = (scard->ATRLength - K) + sizeof(HistoricalBytes) - 1;
+    K = sizeof(HistoricalBytes);
+    scard->ATR[1] &= ~0x0F; // Clear the Historical byte length
+    scard->ATR[1] |= (0x0F & K); // Write new value to it
+    // count TCK
+    uint8_t TCK = 0;
+    for(i = 1; i < scard->ATRLength; i++) {
+        TCK ^= scard->ATR[i];
+    }
+    scard->ATR[scard->ATRLength++] = TCK;
+#endif
 }
 
 bool scard_power_on(ISO7816_SC* scard) {
     if (!scard_cmd_getATR(scard))
         return false;
-    scard_parse(scard->ATR, scard->ATRLength);
+    scard_parse(scard);
     //    scard_pps_req(scard); // PPS exchange
     UartSW_Printf("ATR: %A\r", scard->ATR, scard->ATRLength, ' ');
     scard->State = scs_Idle;
