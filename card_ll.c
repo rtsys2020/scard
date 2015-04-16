@@ -12,6 +12,8 @@
 #include "sw_cmd_uart.h"
 #include "delay.h"
 
+//#define HIGHSPEED
+
 uint8_t HistoricalBytes[] = {
     0x80, 0x73, 0xC8, 0x21, 0x13, 0x66, 0x01, 0x06, 0x11, 0x59, 0x00, 0x01
 };
@@ -126,8 +128,12 @@ static void parseATR(ISO7816_SC* scard) {
 
 static bool pps_exchange() {
 #define PPS0    0x11       // PPS1 present, protocol = 1
+#ifdef HIGHSPEED
 #define PPS1    0x08     // 0000{f=4; Fi=372}, 1000{Di=12}  => bitrate = 129032 bps
-//#define PPS1    0x01       // 0000{f=4; Fi=372}, 0001{Di=1}  => bitrate = 10753 bps
+#else
+#define PPS1    0x01       // 0000{f=4; Fi=372}, 0001{Di=1}  => bitrate = 10753 bps
+#endif
+
     uint8_t pps_req[4];
     pps_req[0] = 0xFF;     // PPSS identifies the PPS request or response and is set to 'FF'
     pps_req[1] = PPS0;     // PPS0
@@ -138,7 +144,9 @@ static bool pps_exchange() {
     if(card_lld_data_synch(pps_req, 4, 4) == 0) {
         return false;
     }
+#ifdef HIGHSPEED
     card_switch_to_highspeed();
+#endif
     UartSW_Printf("PPS ok\r");
     return true;
 }
