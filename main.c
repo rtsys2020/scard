@@ -24,7 +24,7 @@ int main (void) {
     SystemCoreClockUpdate();
     Delay_Init();
     Led_Init();
-    UartSW_Init(4800);
+    UartSW_Init(57600);
     UartSW_Printf("SC AHB:%uMHz\r", SystemCoreClock/1000000);
 
     ISO7816_SC scard;

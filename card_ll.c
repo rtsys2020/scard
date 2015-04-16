@@ -160,9 +160,9 @@ void scard_power_off(ISO7816_SC* scard) {
 int scard_execute_cmd(ISO7816_SC* scard, const uint8_t* pInBuf, unsigned int inLength, uint8_t* pOutBuf, unsigned int* pOutLength) {
     int res = -1;
     uint32_t outLen = 0;
-//    if (scard->State != scs_Idle) {
-//        return res;
-//    }
+    if (scard->State != scs_Idle) {
+        return res;
+    }
     if(inLength > CARD_BUFFER_SIZE) {
         return res;
     }
