@@ -13,7 +13,6 @@
 #include "rj_lib_LPC11Uxx.h"
 #include "card_ll.h"
 
-
 #define CARD_PWR_PIN        PIO1_22
 //#define PWR_ON()            gpio_reset_pin(CARD_PWR_PIN);
 //#define PWR_OFF()           gpio_set_pin(CARD_PWR_PIN);
@@ -25,8 +24,9 @@
 #define CARD_UART           LPC_USART
 #define CARD_UART_IO_CON    LPC_IOCON->PIO0_19
 
-#define IER_RBR             (1)
-#define IER_RLS             (1 << 3)
+#define IER_RBR             0x01
+#define IER_THRE            0x02
+#define IER_RLS             0x04
 
 #define IIR_PEND            0x01
 #define IIR_RLS             0x03
@@ -43,8 +43,11 @@
 #define LSR_TEMT            0x40
 #define LSR_RXFE            0x80
 
+#define ENABLE_RX_IRQ()     CARD_UART->IER |= IER_RBR;   // Enable RX interrupt
+#define ENABLE_TX_IRQ()     CARD_UART->IER |= IER_THRE;   // Enable TX interrupt
+#define DISABLE_RX_IRQ()    CARD_UART->IER &= ~IER_RBR;   // Disable RX interrupt
+#define DISABLE_TX_IRQ()    CARD_UART->IER &= ~IER_THRE;   // Disable TX interrupt
 
-#define CARD_RX_ON_IRQ()    CARD_UART->IER = CARD_UART_IR_RDA
 #define CARD_CLK_TMR        LPC_CT16B1
 #define CARD_CLK_PORT       0
 #define CARD_CLK_PIN        22
@@ -62,7 +65,16 @@
 #define RST_HI()            PinSet(1, 24);
 #define RST_LO()            PinClear(1, 24);
 
+typedef enum {
+    cmd_TxIdle, cmd_TxSendPCB, cmd_TxSendLEN, cmd_TxSendINFO, cmd_TxSendLRC, cmd_TxOff
+} cmd_TxState_t;
+
+typedef enum {
+    cmd_Idle, cmd_sendPCB, cmd_sendLEN, cmd_sendINFO, cmd_sendLRC, cmd_Off
+} cmd_RxState_t;
+
 void card_lld_init(ISO7816_SC* scard);
+uint32_t card_lld_data_synch(uint8_t* pData, uint8_t inLen, uint8_t OutLength);
 uint32_t card_lld_data_exchange();
 
 

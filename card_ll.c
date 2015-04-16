@@ -57,8 +57,10 @@ static bool isValid(uint8_t *pBuf, uint8_t Length) {
 }
 
 static bool getATR(ISO7816_SC* scard) {
+    ENABLE_RX_IRQ();
     scard_cold_rst(scard);
     _delay_ms(99); // wait for ATR recieving
+    DISABLE_RX_IRQ();
     if(scard->dLen == 0) {
         UartSW_Printf("sc absent\r");
         return false;
@@ -122,12 +124,30 @@ static void parseATR(ISO7816_SC* scard) {
 #endif
 }
 
+static bool pps_exchange() {
+    // send to card pps request and get pps response
+#define PPS0    0x11    // PPS1 present, protocol = 1
+//#define PPS1    0x08    // 0000{f=4; Fi=372}, 1000{Di=12}  => bitrate = 129032 bps
+#define PPS1    0x01    // 0000{f=4; Fi=372}, 0001{Di=1}  => bitrate = 10753 bps
+    uint8_t pps_req[4];
+    pps_req[0] = 0xFF;     // PPSS identifies the PPS request or response and is set to 'FF'
+    pps_req[1] = PPS0;     // PPS0
+    pps_req[2] = PPS1;     // PPS1
+    pps_req[3] = pps_req[0] ^ pps_req[1] ^ pps_req[2]; // PCK
+    if(card_lld_data_synch(pps_req, 4, 4) == 0) {
+        return false;
+    }
+    UartSW_Printf("PPS ok\r");
+    return true;
+
+}
+
 bool scard_power_on(ISO7816_SC* scard) {
     if (!getATR(scard))
         return false;
     parseATR(scard);
-    //    scard_pps_req(scard); // PPS exchange
     UartSW_Printf("ATR: %A\r", scard->ATR, scard->ATRLength, ' ');
+    pps_exchange(scard); // PPS exchange not done yet
     scard->State = scs_Idle;
     return true;
 }
@@ -139,10 +159,10 @@ void scard_power_off(ISO7816_SC* scard) {
 
 int scard_execute_cmd(ISO7816_SC* scard, const uint8_t* pInBuf, unsigned int inLength, uint8_t* pOutBuf, unsigned int* pOutLength) {
     int res = -1;
-    uint32_t outLen;
-    if (scard->State != scs_Idle) {
-        return res;
-    }
+    uint32_t outLen = 0;
+//    if (scard->State != scs_Idle) {
+//        return res;
+//    }
     if(inLength > CARD_BUFFER_SIZE) {
         return res;
     }

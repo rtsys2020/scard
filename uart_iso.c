@@ -7,8 +7,13 @@
 
 #include "uart_iso.h"
 #include "sw_cmd_uart.h"
+#include "delay.h"
 
 ISO7816_SC* pScard;
+cmd_TxState_t TxState;
+cmd_RxState_t RxState;
+uint8_t* pTxByte;
+uint8_t TxCnt;
 
 /* Initially, UART speed is 10752.69 bit/s (f=4MHz, F=372, D=1)
  * "The etu initially used by the card shall be equal to 372 clock cycles (i.e., during the answer to reset, the values
@@ -63,14 +68,57 @@ static void card_data_init() {
     while (CARD_UART->LSR & LSR_RDR) {
       regVal = CARD_UART->RBR;    // Dump data from RX FIFO
     }
+    DISABLE_RX_IRQ();
+    DISABLE_TX_IRQ();
     CARD_UART->IER = IER_RBR;   // Enable UART interrupt
     NVIC_EnableIRQ(UART_IRQn); // Enable IRQ
 }
 
+void start_tx() {
+    pScard->LRC ^= pScard->NAD;
+    TxState = cmd_TxSendPCB;
+    ENABLE_TX_IRQ();
+    LPC_USART->THR = pScard->NAD;
+}
+
+uint32_t card_lld_data_synch(uint8_t* pData, uint8_t inLen, uint8_t OutLength) {
+    uint8_t retVal = 0;
+    pTxByte = pData;
+    TxCnt = inLen;
+    while (TxCnt != 0) {
+          LPC_USART->THR = *pTxByte++;
+          while ( !(LPC_USART->LSR & LSR_THRE) );
+          TxCnt--;
+    }
+    pScard->dLen = 0;
+    ENABLE_RX_IRQ();
+    uint16_t Timeout = 999;
+    while(Timeout-- > 0) {
+        if (OutLength == pScard->dLen) {
+            retVal = pScard->dLen; // return the outer length
+            break;
+        }
+        _delay_ms(9);
+    }
+    DISABLE_RX_IRQ();
+    return retVal; // timeout
+}
+
+void TxIBlock(uint8_t *pBuf, uint8_t Len) {
+    pScard->NAD = 0;
+    pScard->PCB = I_PCB;
+    pScard->LEN = Len;
+    pScard->LRC = 0;
+    pTxByte = pBuf;
+    TxCnt = Len;
+    start_tx();
+}
+
 uint32_t card_lld_data_exchange() {
-    UartSW_Printf("DEx\r");
-    UartSW_Printf("--> %A\r", pScard->dBuf, pScard->dLen, ' ');
-    return 0; // return the outer length
+    TxIBlock(pScard->dBuf, pScard->dLen);
+    while(TxState != cmd_TxOff); // wait Tx complete
+    ENABLE_RX_IRQ();
+    return 0;
 }
 
 void card_lld_init(ISO7816_SC* scard) {
@@ -82,23 +130,69 @@ void card_lld_init(ISO7816_SC* scard) {
     pScard->TSreceived = false;
 }
 
+
+static inline void rx_on_irq() {
+    uint8_t RxByte;
+    RxByte = LPC_USART->RBR;
+    if(pScard->TSreceived) pScard->dBuf[pScard->dLen++] = RxByte;
+    else {
+        if((RxByte == 0x3B) || (RxByte == 0x3F)) { // Check TS
+            pScard->dBuf[pScard->dLen++] = RxByte;
+            pScard->TSreceived = !pScard->TSreceived;
+            return;
+        } // TS correct
+    } // // Receive data
+}
+
+static inline void tx_on_irq() {
+    switch (TxState) {
+        case cmd_sendPCB:
+            pScard->LRC ^= pScard->PCB;
+            TxState = cmd_TxSendLEN;
+            LPC_USART->THR = pScard->PCB;
+            break;
+
+        case cmd_sendLEN:
+            pScard->LRC ^= pScard->LEN;
+            TxState = cmd_TxSendINFO;
+            LPC_USART->THR = pScard->LEN;
+            break;
+
+        case cmd_sendINFO:
+            pScard->LRC ^= *pTxByte;
+            LPC_USART->THR = *pTxByte++;
+            TxCnt--;
+            if(TxCnt == 0)
+                TxState = cmd_TxSendLRC;
+            break;
+
+        case cmd_sendLRC:
+            TxState = cmd_TxIdle;
+            LPC_USART->THR = pScard->LRC;
+            break;
+
+        case cmd_Idle:
+            TxState = cmd_TxOff;
+            DISABLE_TX_IRQ();
+            break;
+
+        case cmd_Off:
+        default:
+            break;
+    }
+
+}
+
 void UART_IRQHandler() {
     uint8_t IIRValue;
-    uint8_t RxByte;
+    uint8_t LSRValue;
     IIRValue = LPC_USART->IIR;
     IIRValue >>= 1;           /* skip pending bit in IIR */
     IIRValue &= 0x07;         /* check bit 1~3, interrupt identification */
-    if (IIRValue == IIR_RDA) /* Receive Data Available */
-    {
-        RxByte = LPC_USART->RBR;
-        if(pScard->TSreceived) pScard->dBuf[pScard->dLen++] = RxByte;
-        else {
-            if((RxByte == 0x3B) || (RxByte == 0x3F)) { // Check TS
-                pScard->dBuf[pScard->dLen++] = RxByte;
-                pScard->TSreceived = !pScard->TSreceived;
-                return;
-            } // TS correct
-        } // // Receive data
-    } // Rx Irq
+    if (IIRValue == IIR_RDA) rx_on_irq();
+    else if (IIRValue == IIR_THRE) {
+        LSRValue = LPC_USART->LSR;      // Check status in the LSR to see if
+        if (LSRValue & LSR_THRE) tx_on_irq();
+    } // Tx Irq
     return;
 }
