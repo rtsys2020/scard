@@ -81,48 +81,24 @@ static void parseATR(ISO7816_SC* scard) {
     if(TS == 0x3F) {
         UartSW_Printf("Inverse needed\r");
     }
-#ifdef ATR_VERBOSE
-    UartSW_Printf("TS: %X\r", TS);
-    UartSW_Printf("HisBLen: %X\r", K);
-#endif
     // Read TA, TB, TC, TD as needed
     while(Yi != 0) { // while TD is present
         if(Yi & TAi) { // TAi is present (bit 5 is set)
             Yi &= ~TAi;       // Clear Yi
-            if(i == 1) {
-                scard->FindexDindex = *p++; // TA1 conveys F & D values
-#ifdef ATR_VERBOSE
-                UartSW_Printf("TA%u =%X\r", i, scard->FindexDindex);
-#endif
-            }
-            if(i > 2) {
-                if(scard->ProtocolType == 1) scard->IFSC = *p++;
-#ifdef ATR_VERBOSE
-                UartSW_Printf("TA%u =%X\r", i, scard->IFSC);
-#endif
-            }
+            if(i == 1) scard->FindexDindex = *p++; // TA1 conveys F & D values
+            if((i > 2) && (scard->ProtocolType == 1))
+                    scard->IFSC = *p++;
         }
         if(Yi & TBi) { // TBi is present (bit 6 is set)
             Yi &= ~TBi;       // Clear Yi
-            if(i > 2) {
-                scard->BWI_CWI_T1 = *p++;
-#ifdef ATR_VERBOSE
-                UartSW_Printf("TB%u=%X\r", i, scard->BWI_CWI_T1);
-#endif
-            }
+            if(i > 2) scard->BWI_CWI_T1 = *p++;
         }
         if(Yi & TCi) {       // TCi is present (bit 7 is set)
             Yi &= ~TCi;       // Clear Yi
             if(i == 1) scard->N = *p++;
-#ifdef ATR_VERBOSE
-            UartSW_Printf("TC%u=%X\r", i, scard->N);
-#endif
         }
         if(Yi & TDi) {       // TDi is present (bit 8 is set)
             Yi = *p & 0xF0;
-#ifdef ATR_VERBOSE
-            UartSW_Printf("TD%u=%X\r", i, *p);
-#endif
             // Get protocol type
             if(i == 1) {
                 scard->ProtocolType = *p++ & 0x0F;    // Mask bits representing protocol type
@@ -161,15 +137,18 @@ void scard_power_off(ISO7816_SC* scard) {
     scard->State = scs_Off;
 }
 
-int scard_execute_cmd(ISO7816_SC* scard, const uint8_t* pInBuf, unsigned int inLength, uint8_t* pOutBuf, unsigned int pOutLength) {
+int scard_execute_cmd(ISO7816_SC* scard, const uint8_t* pInBuf, unsigned int inLength, uint8_t* pOutBuf, unsigned int* pOutLength) {
     int res = -1;
-    if (!scard->State != scs_Idle) return res;
-
+    if (!scard->State != scs_Idle)
+        return res;
+    // TxCommand
+    if(inLength > CARD_BUFFER_SIZE)
+        return res;
+    // ReadAnswer
     return res;
 }
 
-bool scard_init(ISO7816_SC* scard) {
+void scard_init(ISO7816_SC* scard) {
     card_lld_init(scard);
     UartSW_Printf("sc init\r");
-    return false; // Dummy
 }

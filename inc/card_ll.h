@@ -21,6 +21,7 @@
 #define TDi     0x80
 
 #define MAX_ATR_SIZE        32
+#define CARD_BUFFER_SIZE    256
 
 typedef enum {
     scs_Error, scs_Off, scs_Idle, scs_Busy
@@ -42,10 +43,10 @@ typedef struct {
     bool TSreceived;
 } ISO7816_SC;
 
-bool scard_init(ISO7816_SC* scard);
+void scard_init(ISO7816_SC* scard);
 bool scard_power_on(ISO7816_SC* scard);
 void scard_power_off(ISO7816_SC* scard);
-int scard_execute_cmd(ISO7816_SC* scard, const uint8_t* pInBuf, unsigned int inLength, uint8_t* pOutBuf, unsigned int pOutLength);
+int scard_execute_cmd(ISO7816_SC* scard, const uint8_t* pInBuf, unsigned int inLength, uint8_t* pOutBuf, unsigned int* pOutLength);
 //void scard_pps_req(ISO7816_SC* scard, const uint8_t* pInBuf, uint32_t inLength);
 
 #endif /* CARD_LL_H_ */
