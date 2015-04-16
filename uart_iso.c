@@ -76,11 +76,12 @@ static void card_data_init() {
 
 void start_tx() {
     pScard->LRC ^= pScard->NAD;
-    TxState = cmd_TxSendPCB;
-    ENABLE_TX_IRQ();
+    TxState = cmd_TxPCB;
+    ENABLE_TX_IRQ(); // disable in the IRQ
     LPC_USART->THR = pScard->NAD;
 }
 
+// Use for PPS exchange and so on
 uint32_t card_lld_data_synch(uint8_t* pData, uint8_t inLen, uint8_t OutLength) {
     uint8_t retVal = 0;
     pTxByte = pData;
@@ -104,6 +105,7 @@ uint32_t card_lld_data_synch(uint8_t* pData, uint8_t inLen, uint8_t OutLength) {
     return retVal; // timeout
 }
 
+// Transmit IBlock
 void TxIBlock(uint8_t *pBuf, uint8_t Len) {
     pScard->NAD = 0;
     pScard->PCB = I_PCB;
@@ -114,11 +116,17 @@ void TxIBlock(uint8_t *pBuf, uint8_t Len) {
     start_tx();
 }
 
-uint32_t card_lld_data_exchange() {
-    TxIBlock(pScard->dBuf, pScard->dLen);
+bool card_lld_data_exchange() {
+    TxIBlock(pScard->dBuf, pScard->dLen); // transmit IBlock
     while(TxState != cmd_TxOff); // wait Tx complete
-    ENABLE_RX_IRQ();
-    return 0;
+    RxState = cmd_RxNAD; // change state to receive NAD byte
+    ENABLE_RX_IRQ(); // disable in IRQ
+    while(RxState != cmd_RxOff); // wait Rx complete
+    if(pScard->LRC) {
+        UartSW_Printf("LRC Err\r");
+        return false;
+    }
+    return true;
 }
 
 void card_lld_init(ISO7816_SC* scard) {
@@ -128,55 +136,92 @@ void card_lld_init(ISO7816_SC* scard) {
     pScard = scard;
     pScard->dLen = 0;
     pScard->TSreceived = false;
+    TxState = cmd_TxOff;
+    RxState = cmd_RxOff;
 }
 
 
 static inline void rx_on_irq() {
     uint8_t RxByte;
     RxByte = LPC_USART->RBR;
-    if(pScard->TSreceived) pScard->dBuf[pScard->dLen++] = RxByte;
-    else {
-        if((RxByte == 0x3B) || (RxByte == 0x3F)) { // Check TS
-            pScard->dBuf[pScard->dLen++] = RxByte;
-            pScard->TSreceived = !pScard->TSreceived;
-            return;
-        } // TS correct
-    } // // Receive data
+    switch (RxState) {
+        case cmd_RxNAD:
+            pScard->LRC = RxByte;
+            pScard->NAD = RxByte;
+            RxState = cmd_RxPCB;
+            break;
+
+        case cmd_RxPCB:
+            pScard->LRC ^= RxByte;
+            pScard->PCB = RxByte;
+            RxState = cmd_RxLEN;
+            break;
+        case cmd_RxLEN:
+            pScard->LRC ^= RxByte;
+            pScard->LEN = RxByte;
+            pScard->dLen = 0;
+            RxState = cmd_RxINFO;
+            break;
+        case cmd_RxINFO:
+            pScard->LRC ^= RxByte;
+            pScard->dBuf[pScard->dLen++]= RxByte;
+            pScard->LEN--; // decrease LEN
+            if(pScard->LEN == 0) { // all data rx complete
+                RxState = cmd_RxLRC;
+            }
+            break;
+        case cmd_RxLRC:
+            pScard->LRC ^= RxByte;
+            RxState = cmd_RxOff;
+            DISABLE_RX_IRQ();
+            break;
+
+        case cmd_RxOff:
+            if(pScard->TSreceived) pScard->dBuf[pScard->dLen++] = RxByte;
+            else {
+                if((RxByte == 0x3B) || (RxByte == 0x3F)) { // Check TS
+                    pScard->dBuf[pScard->dLen++] = RxByte;
+                    pScard->TSreceived = !pScard->TSreceived;
+                    return;
+                } // TS correct
+            } // // Receive data
+        break;
+    } // switch RxState
 }
 
 static inline void tx_on_irq() {
     switch (TxState) {
-        case cmd_sendPCB:
+        case cmd_TxPCB:
             pScard->LRC ^= pScard->PCB;
-            TxState = cmd_TxSendLEN;
+            TxState = cmd_TxLEN;
             LPC_USART->THR = pScard->PCB;
             break;
 
-        case cmd_sendLEN:
+        case cmd_TxLEN:
             pScard->LRC ^= pScard->LEN;
-            TxState = cmd_TxSendINFO;
+            TxState = cmd_TxINFO;
             LPC_USART->THR = pScard->LEN;
             break;
 
-        case cmd_sendINFO:
+        case cmd_TxINFO:
             pScard->LRC ^= *pTxByte;
             LPC_USART->THR = *pTxByte++;
             TxCnt--;
             if(TxCnt == 0)
-                TxState = cmd_TxSendLRC;
+                TxState = cmd_TxLRC;
             break;
 
-        case cmd_sendLRC:
+        case cmd_TxLRC:
             TxState = cmd_TxIdle;
             LPC_USART->THR = pScard->LRC;
             break;
 
-        case cmd_Idle:
+        case cmd_TxIdle:
             TxState = cmd_TxOff;
             DISABLE_TX_IRQ();
             break;
 
-        case cmd_Off:
+        case cmd_TxOff:
         default:
             break;
     }

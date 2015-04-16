@@ -66,16 +66,16 @@
 #define RST_LO()            PinClear(1, 24);
 
 typedef enum {
-    cmd_TxIdle, cmd_TxSendPCB, cmd_TxSendLEN, cmd_TxSendINFO, cmd_TxSendLRC, cmd_TxOff
+    cmd_TxOff, cmd_TxIdle, cmd_TxPCB, cmd_TxLEN, cmd_TxINFO, cmd_TxLRC
 } cmd_TxState_t;
 
 typedef enum {
-    cmd_Idle, cmd_sendPCB, cmd_sendLEN, cmd_sendINFO, cmd_sendLRC, cmd_Off
+    cmd_RxOff, cmd_RxNAD, cmd_RxPCB, cmd_RxLEN, cmd_RxINFO, cmd_RxLRC
 } cmd_RxState_t;
 
 void card_lld_init(ISO7816_SC* scard);
 uint32_t card_lld_data_synch(uint8_t* pData, uint8_t inLen, uint8_t OutLength);
-uint32_t card_lld_data_exchange();
+bool card_lld_data_exchange();
 
 
 #endif /* INC_UART_ISO_H_ */

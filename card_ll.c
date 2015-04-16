@@ -143,8 +143,10 @@ static bool pps_exchange() {
 }
 
 bool scard_power_on(ISO7816_SC* scard) {
-    if (!getATR(scard))
+    if (!getATR(scard)) {
+        UartSW_Printf("ATR err\r");
         return false;
+    }
     parseATR(scard);
     UartSW_Printf("ATR: %A\r", scard->ATR, scard->ATRLength, ' ');
     pps_exchange(scard); // PPS exchange not done yet
@@ -159,19 +161,21 @@ void scard_power_off(ISO7816_SC* scard) {
 
 int scard_execute_cmd(ISO7816_SC* scard, const uint8_t* pInBuf, unsigned int inLength, uint8_t* pOutBuf, unsigned int* pOutLength) {
     int res = -1;
-    uint32_t outLen = 0;
-    if (scard->State != scs_Idle) {
+    if ((scard->State != scs_Idle) || (inLength > CARD_BUFFER_SIZE)) {
         return res;
     }
-    if(inLength > CARD_BUFFER_SIZE) {
-        return res;
-    }
+    UartSW_Printf("-->(%u) ", inLength);
+    if(inLength) UartSW_Printf("%A ", pInBuf, inLength, ' ');
+    UartSW_Printf("\r");
     memcpy(scard->dBuf, pInBuf, inLength); // copy data to CardBuf
     scard->dLen = inLength;
-    outLen = card_lld_data_exchange();
-    if(outLen != 0) {
-        memcpy(pOutBuf, scard->dBuf, outLen);
-        res = *pOutLength = outLen;
+    if(card_lld_data_exchange()) {
+        UartSW_Printf("<--(%u) ", scard->dLen);
+        if(scard->dLen) UartSW_Printf("%A", scard->dBuf, scard->dLen, ' ');
+        //        memcpy(pOutBuf, scard->dBuf, outLen);
+        //        res = *pOutLength = outLen;
+        UartSW_Printf("\r");
+        res = scard->dLen;
     }
     return res;
 }
