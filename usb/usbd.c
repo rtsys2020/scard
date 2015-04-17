@@ -62,12 +62,12 @@ ErrorCode_t USB_Configure_Event (USBD_HANDLE_T hUsb) {
   return LPC_OK;
 }
 
-ErrorCode_t USB_Reset_Event(USBD_HANDLE_T hUsb) {
+ErrorCode_t USB_Reset_Event (USBD_HANDLE_T hUsb) {
   isConfigured = false;
   return LPC_OK;
 }
 
-ErrorCode_t Usb_Init(void) {
+ErrorCode_t usb_init(void) {
   uint32_t i;
   /* Enable AHB clock to the USB block and USB RAM. */
   LPC_SYSCON->SYSAHBCLKCTRL |= ((0x1<<14) | (0x1<<27));
@@ -96,6 +96,7 @@ ErrorCode_t Usb_Init(void) {
     .mem_base            = (uint32_t) usb_RomDriver_buffer,
     .mem_size            = USB_ROM_SIZE,
 
+//    .USB_EvtSetupHandler = USB_EvtSetupHandler,
     .USB_Configure_Event = USB_Configure_Event,
     .USB_Reset_Event     = USB_Reset_Event
   };

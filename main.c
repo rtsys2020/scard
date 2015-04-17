@@ -12,7 +12,8 @@
 #include "led.h"
 #include "pwm_timer.h"
 #include "delay.h"
-#include "sw_cmd_uart.h"
+//#include "sw_cmd_uart.h"
+#include "cmd_uart.h"
 #include "usbd.h"
 #include "card_ll.h"
 
@@ -24,35 +25,17 @@ int main (void) {
     SystemCoreClockUpdate();
     Delay_Init();
     Led_Init();
-    UartSW_Init(57600);
-    UartSW_Printf("SC AHB:%uMHz\r", SystemCoreClock/1000000);
+    Uart_Init(115200);
+    Uart_Printf("SC AHB:%uMHz\r", SystemCoreClock/1000000);
+//    UartSW_Init(57600);
+//    UartSW_Printf("SC AHB:%uMHz\r", SystemCoreClock/1000000);
 
-    ISO7816_SC scard;
-
-    scard_init(&scard);
-    scard_power_on(&scard);
-
-    uint8_t FBuf[4];
-    FBuf[0] = 0x00;
-    FBuf[1] = 0xA4;
-    FBuf[2] = 0x04;
-    FBuf[3] = 0x00;
-    scard_execute_cmd(&scard, FBuf, 4, NULL, NULL);
-
-    FBuf[0] = 0x80;
-    FBuf[1] = 0xA4;
-    FBuf[2] = 0x04;
-    FBuf[3] = 0x00;
-    scard_execute_cmd(&scard, FBuf, 4, NULL, NULL);
-
-    FBuf[0] = 0x80;
-    FBuf[1] = 0x04;
-    FBuf[2] = 0x04;
-    FBuf[3] = 0x00;
-    scard_execute_cmd(&scard, FBuf, 4, NULL, NULL);
-
+//    ISO7816_SC scard;
+//    scard_init(&scard);
+//    scard_power_on(&scard);
 
 //    Usb_Init();
+
     uint32_t Timer;
     while (1) {
         if(Delay_Elapsed(&Timer, 999)) {
