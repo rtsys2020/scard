@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-uint32_t vsprintf(ftVoidChar PPutChar, uint32_t MaxLength, const char *format, va_list args) {
+uint32_t rjprintf(ftVoidChar PPutChar, uint32_t MaxLength, const char *format, va_list args) {
     uint32_t CharCnt = 0, width = 0;
     bool zero_padded = false;
     // Print number n to buffer p in base base. If number is shorter

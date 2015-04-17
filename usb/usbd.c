@@ -39,97 +39,38 @@
 /**************************************************************************/
 #include <string.h>
 #include "usbd.h"
-#include "ccid.h"
-#include "sw_cmd_uart.h"
+#include "cmd_uart.h"
 
-#define USB_ROM_SIZE (1024*2)
-
-volatile static bool isConfigured = false;
-uint8_t *usb_RomDriver_buffer = (uint8_t*)0x20004800;
+usb_t usb;
+uint8_t *usb_buffer = (uint8_t*)0x20004800;
 USBD_HANDLE_T g_hUsb;
 
-bool Usb_isConfigured(void) {
-  return isConfigured;
+bool usb_isConfigured(void) {
+  return usb.isConfigured;
 }
 
-ErrorCode_t USB_Configure_Event (USBD_HANDLE_T hUsb) {
-  USB_CORE_CTRL_T* pCtrl = (USB_CORE_CTRL_T*)hUsb;
-  if (pCtrl->config_value) {
-//    usb_cdc_configured(hUsb);
-  }
-  isConfigured = true;
-
-  return LPC_OK;
+static inline void usb_gpio_init() {
+    PinSetupOut(0, 3); // USB_VBUS_PIO
+    USB_POWER_ON();
+    PinSetupOut(0, 6); // USB_PULLUP
+    USB_DISCONNECT();
 }
 
-ErrorCode_t USB_Reset_Event (USBD_HANDLE_T hUsb) {
-  isConfigured = false;
-  return LPC_OK;
+void usb_init(void) {
+    usb.isConfigured = false;
+    usb_gpio_init();
+    LPC_SYSCON->SYSAHBCLKCTRL |= ((0x1<<14) | (0x1<<27));   // Enable AHB clock to the USB block and USB RAM.
+    LPC_IOCON->USB_VBUS_PIO   &= ~0x1F;
+    LPC_IOCON->USB_VBUS_PIO   |= (0x01<<0);            // VBUS
+    LPC_IOCON->USB_PULLUP     &= ~0x07;
+    LPC_IOCON->USB_PULLUP     |= (0x01<<0);            // SoftConn
+
+//  Ccid_Init(g_hUsb, &USB_FsConfigDescriptor.CCID_Interface);
+//  NVIC_EnableIRQ(USB_IRQn);
+  // Perform USB soft connect
+  USB_CONNECT();
 }
 
-ErrorCode_t usb_init(void) {
-  uint32_t i;
-  /* Enable AHB clock to the USB block and USB RAM. */
-  LPC_SYSCON->SYSAHBCLKCTRL |= ((0x1<<14) | (0x1<<27));
-  LPC_IOCON->PIO0_3   &= ~0x1F;
-  LPC_IOCON->PIO0_3   |= (0x01<<0);            /* Secondary function VBUS */
-  LPC_IOCON->PIO0_6   &= ~0x07;
-  LPC_IOCON->PIO0_6   |= (0x01<<0);            /* Secondary function SoftConn */
-
-  for (i=0; i < strlen(CFG_USB_STRING_MANUFACTURER); i++)
-    USB_StringDescriptor.strManufacturer[i] = CFG_USB_STRING_MANUFACTURER[i];
-
-  for (i=0; i < strlen(CFG_USB_STRING_PRODUCT); i++)
-    USB_StringDescriptor.strProduct[i] = CFG_USB_STRING_PRODUCT[i];
-
-  //iapReadUID(uid);  /* 1st byte is LSB, 4th byte is MSB */
-  for (i = USB_STRING_SERIAL_LEN-1; i > 0; i--)
-  {
-    USB_StringDescriptor.strSerial[i] = ((uint8_t*)USB_StringDescriptor.strSerial)[i];
-    ((uint8_t*)USB_StringDescriptor.strSerial)[i] = 0;
-  }
-
-  USBD_API_INIT_PARAM_T usb_param =
-    {
-    .usb_reg_base        = LPC_USB_BASE,
-    .max_num_ep          = USB_MAX_EP_NUM,
-    .mem_base            = (uint32_t) usb_RomDriver_buffer,
-    .mem_size            = USB_ROM_SIZE,
-
-//    .USB_EvtSetupHandler = USB_EvtSetupHandler,
-    .USB_Configure_Event = USB_Configure_Event,
-    .USB_Reset_Event     = USB_Reset_Event
-  };
-
-  USB_CORE_DESCS_T DeviceDes =
-  {
-    .device_desc      = (uint8_t*) &USB_DeviceDescriptor,
-    .string_desc      = (uint8_t*) &USB_StringDescriptor,
-    .full_speed_desc  = (uint8_t*) &USB_FsConfigDescriptor,
-    .high_speed_desc  = (uint8_t*) &USB_FsConfigDescriptor,
-    .device_qualifier = NULL
-  };
-
-  /* Start USB hardware initialisation */
-  USBD_API->hw->Init(&g_hUsb, &DeviceDes, &usb_param);
-
-  /* Initialise the class driver(s) */
-  Ccid_Init(g_hUsb, &USB_FsConfigDescriptor.CCID_Interface);
-
-  /* Enable the USB interrupt */
-  NVIC_EnableIRQ(USB_IRQn);
-
-  /* Perform USB soft connect */
-  USBD_API->hw->Connect(g_hUsb, 1);
-
-  return LPC_OK;
-}
-
-/**************************************************************************/
-/*!
-    @brief Redirect the USB IRQ handler to the ROM handler
-*/
-/**************************************************************************/
 void USB_IRQHandler(void) {
-  USBD_API->hw->ISR(g_hUsb);
+    Uart_Printf("i\r");
 }

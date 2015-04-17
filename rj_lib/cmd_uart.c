@@ -44,7 +44,7 @@ void Uart_Init(uint32_t ABaudrate) {
     NVIC_EnableIRQ(UART_IRQn);              // Enable IRQ
 }
 
-static inline void FPutChar(uint8_t c) {
+static inline void Put(uint8_t c) {
     *Uart.PWrite++ = c;
     if(Uart.PWrite >= &Uart.TXBuf[UART_TXBUF_SIZE]) Uart.PWrite = Uart.TXBuf;   // Circulate buffer
 }
@@ -65,7 +65,7 @@ void Uart_Printf(const char *format, ...) {
     uint32_t MaxLength = UART_TXBUF_SIZE;
     va_list args;
     va_start(args, format);
-    Uart.IFullSlotsCount += vsprintf(FPutChar, MaxLength, format, args);
+    Uart.IFullSlotsCount += rjprintf((ftVoidChar)Put, MaxLength, format, args);
     va_end(args);
 
     // Start transmission if Idle
@@ -83,7 +83,6 @@ static inline void tx_on_irq() {
     if(Uart.ITransSize == 0) {
         Uart.isBusy = false;
         DISABLE_TX_IRQ();
-
     }
     else send_byte();
 }

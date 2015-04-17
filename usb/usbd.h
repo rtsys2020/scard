@@ -36,25 +36,28 @@
 #ifndef __USBD_H__
 #define __USBD_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "LPC11Uxx.h"
 #include "power_api.h"
 #include "mw_usbd_rom_api.h"
 #include "descriptors.h"
 #include "rj_lib_LPC11Uxx.h"
 
-#define USBD_API     ((*(ROM **)(0x1FFF1FF8))->pUSBD)
 
-ErrorCode_t Usb_Init(void);
-bool Usb_isConfigured(void);
+#define USB_VBUS_PIO        PIO0_3
+#define USB_PULLUP          PIO0_6
+
+#define USB_POWER_ON()      PinSet(0, 3)
+#define USB_POWER_OFF()     PinClear(0, 3)
+#define USB_CONNECT()       PinClear(0, 6)
+#define USB_DISCONNECT()    PinSet(0, 6)
+
+typedef struct {
+    bool isConfigured;
+} usb_t;
+
+void usb_init(void);
+bool usb_isConfigured(void);
 
 extern USBD_HANDLE_T g_hUsb;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

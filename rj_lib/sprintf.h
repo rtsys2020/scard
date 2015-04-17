@@ -21,7 +21,7 @@ typedef void(*ftVoidChar)(char);
 #ifdef __cplusplus
 extern "C" {
 #endif
-uint32_t vsprintf(ftVoidChar PPutChar, uint32_t MaxLength, const char *format, va_list args);
+uint32_t rjprintf(ftVoidChar PPutChar, uint32_t MaxLength, const char *format, va_list args);
 #ifdef __cplusplus
 }
 #endif

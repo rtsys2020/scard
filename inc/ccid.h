@@ -16,7 +16,7 @@
 #define CCID_HEADER_SZ      10
 #define CCID_DATA_SZ        251
 
-void Ccid_Init(USBD_HANDLE_T hUsb, USB_INTERFACE_DESCRIPTOR const *const pControlIntfDesc);
+void ccid_init();
 
 
 #endif /* INC_CCID_H_ */

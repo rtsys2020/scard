@@ -32,7 +32,7 @@ int main (void) {
 //    scard_init(&scard);
 //    scard_power_on(&scard);
 
-    Usb_Init();
+    usb_init();
 
     uint32_t Timer;
     while (1) {

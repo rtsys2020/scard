@@ -84,7 +84,7 @@ void UartSW_Printf(const char *format, ...) {
     uint32_t MaxLength = SW_OUT_BIF_SZ;
     va_list args;
     va_start(args, format);
-    uint32_t Count = vsprintf(FPut, MaxLength, format, args);
+    uint32_t Count = rjprintf(FPut, MaxLength, format, args);
     va_end(args);
     // Start transmission
     uint8_t i;
