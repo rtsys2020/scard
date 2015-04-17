@@ -11,12 +11,12 @@
 DbgUart_t Uart;
 
 void Uart_Init(uint32_t ABaudrate) {
+    uint32_t Fdiv;
+    uint32_t regVal;
     Uart.PWrite = Uart.TXBuf;
     Uart.PRead = Uart.TXBuf;
     Uart.IFullSlotsCount = 0;
-
-    uint32_t Fdiv;
-    uint32_t regVal;
+    Uart.isBusy = false;
 
     LPC_IOCON->PIO0_19 &= ~0x07;
     LPC_IOCON->PIO0_19 |= 0x01;     /* UART TXD */
@@ -41,11 +41,12 @@ void Uart_Init(uint32_t ABaudrate) {
     while ( DEBUG_UART->LSR & LSR_RDR ) {
         regVal = DEBUG_UART->RBR;    /* Dump data from RX FIFO */
     }
+    NVIC_EnableIRQ(UART_IRQn);              // Enable IRQ
 }
 
 static inline void FPutChar(uint8_t c) {
     *Uart.PWrite++ = c;
-        if(Uart.PWrite >= &Uart.TXBuf[UART_TXBUF_SIZE]) Uart.PWrite = Uart.TXBuf;   // Circulate buffer
+    if(Uart.PWrite >= &Uart.TXBuf[UART_TXBUF_SIZE]) Uart.PWrite = Uart.TXBuf;   // Circulate buffer
 }
 
 void SendBufSynch(uint8_t *BufferPtr, uint32_t Length) {
@@ -53,6 +54,11 @@ void SendBufSynch(uint8_t *BufferPtr, uint32_t Length) {
       while ( !(DEBUG_UART->LSR & LSR_THRE) ); // wait tx
       DEBUG_UART->THR = *BufferPtr++; // send Byte
     }
+}
+
+static inline void send_byte() {
+    DEBUG_UART->THR = *Uart.PRead++;
+    if(Uart.PRead >= (Uart.TXBuf + UART_TXBUF_SIZE)) Uart.PRead = Uart.TXBuf;
 }
 
 void Uart_Printf(const char *format, ...) {
@@ -63,17 +69,23 @@ void Uart_Printf(const char *format, ...) {
     va_end(args);
 
     // Start transmission if Idle
+    while(Uart.isBusy);
+    Uart.isBusy = true;
     uint32_t PartSz = (Uart.TXBuf + UART_TXBUF_SIZE) - Uart.PRead;    // Char count from PRead to buffer end
     Uart.ITransSize = (Uart.IFullSlotsCount > PartSz)? PartSz : Uart.IFullSlotsCount;  // How many to transmit now
-//    Send from Pread To Pread+ITransSize
-    SendBufSynch(Uart.PRead, Uart.ITransSize);
-    Uart.IFullSlotsCount -= Uart.ITransSize;
-    Uart.PRead += Uart.ITransSize;
-    if(Uart.PRead >= (Uart.TXBuf + UART_TXBUF_SIZE)) Uart.PRead = Uart.TXBuf; // Circulate pointer
+    ENABLE_TX_IRQ();
+    send_byte();
 }
 
 static inline void tx_on_irq() {
-//   IRQ
+    Uart.ITransSize--;
+    Uart.IFullSlotsCount--;
+    if(Uart.ITransSize == 0) {
+        Uart.isBusy = false;
+        DISABLE_TX_IRQ();
+
+    }
+    else send_byte();
 }
 
 void UART_IRQHandler() {

@@ -9,14 +9,15 @@
 #define RJ_LIB_CMD_UART_H_
 
 #include "LPC11Uxx.h"
+#include "rj_lib_LPC11Uxx.h"
 #include "sprintf.h"
 
 #define UART_TXBUF_SIZE     64
 #define DEBUG_UART          LPC_USART
 #define DEBUG_UART_IO_CON   LPC_IOCON->PIO0_19
 
-#define ENABLE_TX_IRQ()     CARD_UART->IER |= IER_THRE;   // Enable TX interrupt
-#define DISABLE_TX_IRQ()    CARD_UART->IER &= ~IER_THRE;   // Disable TX interrupt
+#define ENABLE_TX_IRQ()     DEBUG_UART->IER |= IER_THRE;   // Enable TX interrupt
+#define DISABLE_TX_IRQ()    DEBUG_UART->IER &= ~IER_THRE;   // Disable TX interrupt
 
 #define IER_RBR             0x01
 #define IER_THRE            0x02
@@ -41,7 +42,7 @@ typedef struct {
     uint8_t TXBuf[UART_TXBUF_SIZE];
     uint8_t *PWrite, *PRead;
     uint32_t IFullSlotsCount, ITransSize;
-
+    bool isBusy;
 } DbgUart_t;
 
 void Uart_Printf(const char *S, ...);
