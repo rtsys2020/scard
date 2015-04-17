@@ -12,6 +12,11 @@
 #include "sprintf.h"
 
 #define UART_TXBUF_SIZE     64
+#define DEBUG_UART          LPC_USART
+#define DEBUG_UART_IO_CON   LPC_IOCON->PIO0_19
+
+#define ENABLE_TX_IRQ()     CARD_UART->IER |= IER_THRE;   // Enable TX interrupt
+#define DISABLE_TX_IRQ()    CARD_UART->IER &= ~IER_THRE;   // Disable TX interrupt
 
 #define IER_RBR             0x01
 #define IER_THRE            0x02

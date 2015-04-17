@@ -241,6 +241,7 @@ static inline void tx_on_irq() {
 }
 
 // IRQ wrapper
+#if 0 // Switch on uf Software uart debug is used
 void UART_IRQHandler() {
     uint8_t IIRValue;
     uint8_t LSRValue;
@@ -254,5 +255,6 @@ void UART_IRQHandler() {
     } // Tx Irq
     return;
 }
+#endif
 
 #endif
