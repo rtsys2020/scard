@@ -139,29 +139,39 @@ void UartSW_Init(uint32_t Baudrate) {
     swu_status = 0; // neither tx nor rx active
 
     BitLength = SystemCoreClock/Baudrate;     // 48000000/9600 = 5000 PCLKs
+#ifdef TIMER32_0
     LPC_SYSCON->SYSAHBCLKCTRL |= (1 << 9);
+#endif
+
+#ifdef TIMER32_1
+    LPC_SYSCON->SYSAHBCLKCTRL |= (1 << 10);
+#endif
     LPC_SYSCON->SYSAHBCLKCTRL |= (1 << 12);
-    LPC_SYSCON->UARTCLKDIV = 0x1;     /* divided by 1 */
 
-    LPC_IOCON->PIO1_27 &= ~0x07;
-    LPC_IOCON->PIO1_27 |= 0x01; /* Timer0_32 MAT3 */
+    LPC_IOCON->PIO_SW &= ~0x07;
+#ifdef TIMER32_0
+    LPC_IOCON->PIO_SW |= 0x01; // MAT3
+#endif
 
-    //Timer0_32 setup
-    SW_UART_TMR->TCR = 0x00; // stop TIMER0_32
+#ifdef TIMER32_1
+    LPC_IOCON->PIO_SW |= ((1 << 7) | 2); // MAT3
+#endif
+
+    SW_UART_TMR->TCR = 0x00; // stop timer
     SW_UART_TMR->TCR = 0x02; // reset counter
     SW_UART_TMR->TCR = 0x00; // release the reset
 
-    SW_UART_TMR->IR = 0x01F; // clear all TIMER0 flags
+    SW_UART_TMR->IR = 0x01F; // clear all flags
     SW_UART_TMR->PR = 0x00000000; // no prescaler
-    SW_UART_TMR->MR0 = 0x3FFFFFFF; // TIMER0_32 counts 0 - 0x3FFFFFFF
-    SW_UART_TMR->MCR = 2; // reset TIMER0_32 on MR0
+    SW_UART_TMR->MR0 = 0x3FFFFFFF; // counts 0 - 0x3FFFFFFF
+    SW_UART_TMR->MCR = 2; // reset on MR0
     SW_UART_TMR->EMR = 0x0008; // drive MAT0.3 high
-    SW_UART_TMR->TCR = 0x01; // let TIMER0_32 run
-    NVIC_EnableIRQ(TIMER_32_0_IRQn); // Enable the TIMER0_32 Interrupt
+    SW_UART_TMR->TCR = 0x01; // let run
+    NVIC_EnableIRQ(IRQ_Channel); // Enable Interrupt
     return;
 }
 
-void TIMER32_0_IRQHandler() {
+void IRQ_Handler() {
     UartSW_IrqTx();
 }
 
