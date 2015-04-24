@@ -12,7 +12,7 @@
 #include "system_LPC11Uxx.h"
 #include "gpio.h"
 
-#define TIMER32_1
+#define TIMER32_0
 
 #ifdef TIMER32_0
 #define PORT_SW_TX      1   //P1.27
