@@ -32,24 +32,33 @@ int main (void) {
     scard_init(&scard);
     scard_power_on(&scard);
 
-    uint8_t FBuf[4];
+    uint8_t FBuf[5];
+    FBuf[0] = 0x00;
+    FBuf[1] = 0xCA;
+    FBuf[2] = 0x03;
+    FBuf[3] = 0x07;
+    FBuf[4] = 0x00;
+    scard_execute_cmd(&scard, FBuf, 5, NULL);
+
     FBuf[0] = 0x00;
     FBuf[1] = 0xA4;
     FBuf[2] = 0x04;
     FBuf[3] = 0x00;
-    scard_execute_cmd(&scard, FBuf, 4, NULL, NULL);
-//
-//    FBuf[0] = 0x80;
-//    FBuf[1] = 0xA4;
-//    FBuf[2] = 0x04;
-//    FBuf[3] = 0x00;
-//    scard_execute_cmd(&scard, FBuf, 4, NULL, NULL);
-//
-//    FBuf[0] = 0x80;
-//    FBuf[1] = 0x04;
-//    FBuf[2] = 0x04;
-//    FBuf[3] = 0x00;
-//    scard_execute_cmd(&scard, FBuf, 4, NULL, NULL);
+    scard_execute_cmd(&scard, FBuf, 4, NULL);
+
+    FBuf[0] = 0x00;
+    FBuf[1] = 0xA4;
+    FBuf[2] = 0x01;
+    FBuf[3] = 0x01;
+    FBuf[3] = 0x00;
+    scard_execute_cmd(&scard, FBuf, 5, NULL);
+
+    FBuf[0] = 0x00;
+    FBuf[1] = 0xCA;
+    FBuf[2] = 0x13;
+    FBuf[3] = 0x0A;
+    FBuf[4] = 0x00;
+    scard_execute_cmd(&scard, FBuf, 5, NULL);
 
 
 //    Usb_Init();
